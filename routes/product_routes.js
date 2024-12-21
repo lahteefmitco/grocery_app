@@ -2,6 +2,11 @@ const router = require("express").Router();
 const JWT = require("../helpers/jwt_helper");
 const ProductController = require("../controllers/product_controller");
 
+const multer = require("multer");
+
+
+const upload = multer({ storage: multer.memoryStorage() });
+
 
 
 
@@ -16,7 +21,7 @@ router.put("/updateAProduct/:productId", JWT.verifyAccessToken, ProductControlle
 
 router.delete("/deleteAProduct/:productId", JWT.verifyAccessToken, ProductController.deleteProduct);
 
-router.patch("/updateProductImage/:productId", JWT.verifyAccessToken, ProductController.updateProductImage);
+router.patch("/updateProductImage/:productId", JWT.verifyAccessToken, upload.single('image'),  ProductController.updateProductImage);
 
 
 

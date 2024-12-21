@@ -1,5 +1,7 @@
 const sequelize = require("../helpers/database");
 const createError = require("http-errors");
+const supabase = require("../helpers/supabase_client");
+
 
 
 const createProduct = async (req, res, next) => {
@@ -48,6 +50,8 @@ const createProduct = async (req, res, next) => {
 }
 
 
+
+
 const listAllProducts = async (req, res, next) => {
     try {
         const isAvailable = req.query.isAvailable;
@@ -82,11 +86,48 @@ const listAllProducts = async (req, res, next) => {
 const updateProductImage = async (req, res, next) => {
     try {
         const { productId } = req.params;
-        const { image } = req.body;
 
-        if (!image) {
-            return next(createError.BadRequest("Please provide image url"));
+        if(isNaN(Number(productId))){
+            return next(createError.BadRequest("Please provide a valid product id"));
         }
+
+        // Check if the product exists
+        const productQuery = `SELECT * FROM "Product" WHERE id = :productId`;
+        const [product] = await sequelize.query(productQuery, {
+            replacements: { productId },
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        console.log(product);
+        
+
+        if (!product) {
+            return next(createError.NotFound(`Product not found with the given id ${productId}`));
+        }
+
+
+        const file = req.file;
+
+        if (!file) {
+            return res.status(400).send('No file uploaded');
+        }
+    
+        console.log(file.originalname);
+
+        const fileName = `${Date.now()}_${file.originalname}`; // Generate a unique filename
+
+        // Upload the file buffer directly to Supabase
+        const { data, error } = await supabase.storage
+            .from(process.env.SUPABASE_BUCKET_NAME)
+            .upload(fileName, file.buffer, {
+                contentType: file.mimetype,
+                upsert: false, // Set to true if you want to overwrite files with the same name
+            });
+
+        if (error) throw error;
+      
+        
+        const image = `${process.env.SUPABASE_URL}/storage/v1/object/public/${process.env.SUPABASE_BUCKET_NAME}/${fileName}`;
 
         await sequelize.query(`
             UPDATE "Product"
@@ -97,7 +138,10 @@ const updateProductImage = async (req, res, next) => {
                 replacements: { image, productId },
             });
 
-        res.send({ message: "Product image updated successfully" });
+            console.log(image);
+            
+
+        res.send({ message: "Product image updated successfully",image:fileName });
 
     } catch (error) {
         console.log(error);

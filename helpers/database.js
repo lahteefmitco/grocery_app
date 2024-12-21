@@ -2,17 +2,17 @@ const { Sequelize } = require("sequelize");
 require("dotenv").config();
 
 
-// const user = "postgres";
-// const host = "localhost";
-// const database = "grocery";
-// const password = "la@1234";
-// const port = "5432";
+const user = "postgres";
+const host = "localhost";
+const database = "grocery";
+const password = "la@1234";
+const port = "5432";
 
-const user = process.env.AIVEN_DATABASE_USER;
-const host = process.env.AIVEN_DATABASE_HOST;
-const database = process.env.AIVEN_DATABASE_NAME;
-const password = process.env.AIVEN_DATABASE_PASSWORD;
-const port = process.env.AIVEN_DATABASE_PORT;
+// const user = process.env.AIVEN_DATABASE_USER;
+// const host = process.env.AIVEN_DATABASE_HOST;
+// const database = process.env.AIVEN_DATABASE_NAME;
+// const password = process.env.AIVEN_DATABASE_PASSWORD;
+// const port = process.env.AIVEN_DATABASE_PORT;
 
 
 
@@ -21,12 +21,12 @@ const sequelize = new Sequelize(database, user, password, {
     port,
     dialect: "postgres",
     logging: false,
-    dialectOptions: {
-        ssl: {
-            require: true,
-            rejectUnauthorized: false,
-        },
-    },
+    // dialectOptions: {
+    //     ssl: {
+    //         require: true,
+    //         rejectUnauthorized: false,
+    //     },
+    // },
 });
 
 (async () => {
