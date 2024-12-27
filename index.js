@@ -22,14 +22,14 @@ sequelize.sync({ force: true}).then(
   );
 
 
-app.get("/", (req, res) => {
+app.get("/",  (req, res) => {
     res.send("Welcome to OXDO Technologies");
 });
 
-app.use("/api/user", require("./routes/user_routes"));
-app.use("/api/product", require("./routes/product_routes"));
-app.use("/api/cart", require("./routes/cart_routes"));
-app.use("/api/sample", require("./routes/sample_route"));
+app.use("/api/user",  require("./routes/user_routes"));
+app.use("/api/product",  require("./routes/product_routes"));
+app.use("/api/cart",  require("./routes/cart_routes"));
+app.use("/api/sample",  require("./routes/sample_route"));
 
 
 app.use((req, res, next) => {
@@ -44,11 +44,23 @@ app.use((err, req, res, next) => {
 
 
 
+
+
 const PORT = process.env.PORT || 5056
 app.listen(PORT, () => console.log(`App is listening on http://localhost:${PORT}`));
 
 
 
+
+function verifyOwner (req, res, next) {
+  const {owner} = req.headers;
+
+  if(!owner) return next(createError.BadRequest("Owner is not defined"));
+
+  if(owner == "OXDO") return next();
+
+  return next(createError.Unauthorized("invalid owner"));
+}
 
 
 

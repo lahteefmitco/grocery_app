@@ -9,7 +9,7 @@ const signUp = async (req, res, next) => {
         var { name, userName, password, isAdmin } = req.body;
 
 
-        if (!userName || !password) return next(createError.BadRequest("No password or password"));
+        if (!userName || !password) return next(createError.BadRequest("No username or password"));
         if (userName.length < 4) return next(createError.BadRequest("Username length is less than 4"));
         if (password.length < 6) return next(createError.BadRequest("password length is less than 4"));
 
@@ -40,7 +40,7 @@ const signUp = async (req, res, next) => {
 
 
 
-        res.send({ token: accessToken })
+        res.send({ token: accessToken, name })
 
 
 
@@ -62,14 +62,14 @@ const signIn = async (req, res, next) => {
         var { userName, password } = req.body;
 
 
-        if (!userName || !password) return next(createError.BadRequest());
+        if (!userName || !password) return next(createError.BadRequest("No username or password"));
         if (userName.length < 4) return next(createError.BadRequest("Username length is less than 4"));
         if (password.length < 6) return next(createError.BadRequest("password length is less than 6"));
 
 
 
         const query = `
-                SELECT id, "isAdmin"
+                SELECT id, "isAdmin",name
                 FROM public."User" 
                 WHERE "userName" = :userName AND password = :password
                 `;
@@ -83,21 +83,23 @@ const signIn = async (req, res, next) => {
 
         console.log(result);
 
-        if (!result) return next(createError.BadRequest("User not registered"));
+        if (!result) return next(createError.NotFound("User not registered"));
         console.log(metadata);
 
 
 
 
         const userId = result["id"];
-        const isAdmin = result["isAdmin"]
+        const isAdmin = result["isAdmin"];
+        const name = result["name"];
+
 
         const accessToken = await JWT.signInAccessToken(userId, userName, isAdmin)
 
 
 
 
-        res.send({ token: accessToken })
+        res.send({ token: accessToken, name })
 
 
 
@@ -120,49 +122,21 @@ const listAllUsers = async (req, res, next) => {
 
         if (!isAdmin) return next(createError.BadRequest("Admin users only allowed to fetch user list"));
 
-        const searchKey = req.query.isAdmin
-        console.log("search key");
 
-        console.log(searchKey);
-
-
-        let response;
-
-        if (searchKey === undefined) {
-            const query = `
+        const query = `
                 SELECT *
                 FROM public."User";
                 `;
 
-            const [result, metadata] = await sequelize.query(query);
 
-            console.log(result);
+        const [result, metadata] = await sequelize.query(query,);
 
-            response = result;
+        console.log(result);
+        console.log("metadata");
 
+        console.log(metadata);
 
-        } else {
-            const query = `
-                SELECT *
-                FROM public."User" WHERE "isAdmin" = ${searchKey};
-                `;
-
-
-            const [result, metadata] = await sequelize.query(query,);
-
-            console.log(result);
-            console.log("metadata");
-
-            console.log(metadata);
-
-            response = result;
-
-        }
-
-
-
-
-        res.send(response);
+        res.send(result);
 
     } catch (error) {
         if (error.name === "SequelizeDatabaseError") {
@@ -186,19 +160,30 @@ const deleteUser = async (req, res, next) => {
 
         const userIdToDelete = req.params.id;
 
+        if (isNaN(Number(userIdToDelete))) return next(createError.BadRequest("User ID should be a number"));
+
         // Check if the user exists
-        const userExistsQuery = `SELECT id FROM "User" WHERE id = :userIdToDelete`;
+        const userExistsQuery = `SELECT id, "isAdmin" FROM "User" WHERE id = :userIdToDelete`;
         const [userExistsResult] = await sequelize.query(userExistsQuery, {
             replacements: { userIdToDelete },
             type: sequelize.QueryTypes.SELECT
         });
 
+        console.log(userExistsResult);
+        console.log("-----");
+        console.log(userIdToDelete);
+        console.log(userId);
+        
+        
+        
+        
+
         if (!userExistsResult) {
             return next(createError.BadRequest(`User with id ${userIdToDelete} not found`));
         }
 
-        if (userId === userIdToDelete) {
-            return next(createError.Forbidden("Admin users can't delete his own account"));
+        if (userId != userIdToDelete && userExistsResult["isAdmin"] === true) {
+            return next(createError.Forbidden("Admin users can't delete others admin account"));
         }
 
         const query = `DELETE FROM "User" WHERE id = :userIdToDelete`;
@@ -230,19 +215,27 @@ const deleteUser = async (req, res, next) => {
 
 const updateUser = async (req, res, next) => {
     try {
-       
 
+
+        const {userId} = req.payload;
         
         console.log(req.payload.isAdmin);
+        console.log(userId);
         
-
+        
 
         if (!req.payload.isAdmin) return next(createError.Forbidden("Admin users only allowed to update users"));
 
         const userIdToUpdate = req.params.id;
 
+        console.log("userIdToUpdate", userIdToUpdate);
+        
+
+        if (isNaN(Number(userIdToUpdate))) return next(createError.BadRequest("User ID should be a number"));
+
+
         // Check if the user exists
-        const userExistsQuery = `SELECT id FROM "User" WHERE id = :userIdToUpdate`;
+        const userExistsQuery = `SELECT id,"isAdmin" FROM "User" WHERE id = :userIdToUpdate`;
         const [userExistsResult] = await sequelize.query(userExistsQuery, {
             replacements: { userIdToUpdate },
             type: sequelize.QueryTypes.SELECT
@@ -252,11 +245,18 @@ const updateUser = async (req, res, next) => {
             return next(createError.BadRequest(`User with id ${userIdToUpdate} not found`));
         }
 
+        console.log(userExistsResult);
+        
+
+        if(userIdToUpdate != userId && userExistsResult["isAdmin"]){
+            return next(createError.Forbidden("Admin users can't update other admin users"));
+        }
+
         const { name, userName, password, isAdmin } = req.body;
 
-        if (!userName || !password) return next(createError.BadRequest("No password or password"));
+        if (!userName || !password) return next(createError.BadRequest("No userName or password"));
         if (userName.length < 4) return next(createError.BadRequest("Username length is less than 4"));
-        if (password.length < 6) return next(createError.BadRequest("password length is less than 4"));
+        if (password.length < 6) return next(createError.BadRequest("password length is less than 6"));
 
         if (isAdmin === undefined) return next(createError.BadRequest("isAdmin value not given"));
 
@@ -285,6 +285,9 @@ const updateUser = async (req, res, next) => {
         res.send("User updated successfully");
 
     } catch (error) {
+        if (error.name === "SequelizeUniqueConstraintError") {
+            return next(createError.BadRequest("Unique constraint error, username is already used"))
+        }
         if (error.name === "SequelizeDatabaseError") {
             return next(createError.InternalServerError("Database problem, please contact with developer"))
         }
@@ -294,4 +297,4 @@ const updateUser = async (req, res, next) => {
     }
 }
 
-module.exports = { signUp, signIn, listAllUsers, deleteUser,updateUser };
+module.exports = { signUp, signIn, listAllUsers, deleteUser, updateUser };

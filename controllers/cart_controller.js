@@ -202,6 +202,11 @@ const getCartById = async (req, res, next) => {
 
 const listAllCarts = async (req, res, next) => {
     try {
+        const {isAdmin} = req.payload;
+        console.log(isAdmin);
+        
+        if(!isAdmin) return next(createError.Unauthorized("You are not authorized to view this page"));
+
         const listQuery = `SELECT * FROM "Cart"`;
 
         const carts = await sequelize.query(listQuery, {

@@ -23,7 +23,7 @@ router.delete("/deleteAProduct/:productId", JWT.verifyAccessToken, ProductContro
 
 router.patch("/updateProductImage/:productId", JWT.verifyAccessToken, upload.single('image'),  ProductController.updateProductImage);
 
-
+router.delete("/deleteProductImage/:productId", JWT.verifyAccessToken, ProductController.deleteProductImage);
 
 
 

@@ -87,7 +87,7 @@ const updateProductImage = async (req, res, next) => {
     try {
         const { productId } = req.params;
 
-        if(isNaN(Number(productId))){
+        if (isNaN(Number(productId))) {
             return next(createError.BadRequest("Please provide a valid product id"));
         }
 
@@ -99,7 +99,9 @@ const updateProductImage = async (req, res, next) => {
         });
 
         console.log(product);
-        
+
+
+
 
         if (!product) {
             return next(createError.NotFound(`Product not found with the given id ${productId}`));
@@ -109,12 +111,24 @@ const updateProductImage = async (req, res, next) => {
         const file = req.file;
 
         if (!file) {
-            return res.status(400).send('No file uploaded');
+            return res.status(400).send('No image uploaded');
         }
-    
+
         console.log(file.originalname);
 
-        const fileName = `${Date.now()}_${file.originalname}`; // Generate a unique filename
+        const fileName = `${Date.now()}_${file.originalname}`;
+
+
+        // Delete existing image from Supabase if it exists
+        if (product.image) {
+            const imagePath = product.image.split('/').pop(); // Extract the image path from the URL
+            const { error: deleteError } = await supabase.storage.from(process.env.SUPABASE_BUCKET_NAME).remove([imagePath]);
+
+            if (deleteError) {
+                console.error('Error deleting image from Supabase:', deleteError);
+                return next(createError.InternalServerError('Error deleting existing image'));
+            }
+        }// Generate a unique filename
 
         // Upload the file buffer directly to Supabase
         const { data, error } = await supabase.storage
@@ -125,8 +139,8 @@ const updateProductImage = async (req, res, next) => {
             });
 
         if (error) throw error;
-      
-        
+
+
         const image = `${process.env.SUPABASE_URL}/storage/v1/object/public/${process.env.SUPABASE_BUCKET_NAME}/${fileName}`;
 
         await sequelize.query(`
@@ -138,10 +152,10 @@ const updateProductImage = async (req, res, next) => {
                 replacements: { image, productId },
             });
 
-            console.log(image);
-            
+        console.log(image);
 
-        res.send({ message: "Product image updated successfully",image:fileName });
+
+        res.send({ message: "Product image updated successfully", image: fileName });
 
     } catch (error) {
         console.log(error);
@@ -160,7 +174,7 @@ const getProductById = async (req, res, next) => {
 
         console.log(productId);
 
-        if(!productId)  next(createError.BadRequest("Please provide product id"));
+        if (!productId) next(createError.BadRequest("Please provide product id"));
 
 
         // Check if the product exists
@@ -331,6 +345,16 @@ const deleteProduct = async (req, res, next) => {
             type: sequelize.QueryTypes.DELETE
         });
 
+        if (productExistsResult.image) {
+            // Delete the image from Supabase
+            const imagePath = productExistsResult.image.split('/').pop(); // Extract the image path from the URL
+            const { error: deleteError } = await supabase.storage.from(process.env.SUPABASE_BUCKET_NAME).remove([imagePath]);
+
+            if (deleteError) {
+                console.error('Error deleting image from Supabase:', deleteError);
+            }
+        }
+
         console.log(result);
         console.log(metadata);
 
@@ -382,7 +406,67 @@ const searchProduct = async (req, res, next) => {
 }
 
 
+const deleteProductImage = async (req, res, next) => {
+    try {
+        const { productId } = req.params;
+
+        if (isNaN(Number(productId))) {
+            return next(createError.BadRequest("Please provide a valid product id"));
+        }
+
+        // Check if the product exists
+        const productQuery = `SELECT * FROM "Product" WHERE id = :productId`;
+        const [product] = await sequelize.query(productQuery, {
+            replacements: { productId },
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        if (!product) {
+            return next(createError.NotFound(`Product not found with the given id ${productId}`));
+        }
+
+        // Check if the product has an image
+        if (!product.image) {
+            return next(createError.BadRequest("No image found for the given product"));
+        }
+
+        // Delete the image from Supabase
+        const imagePath = product.image.split('/').pop(); // Extract the image path from the URL
+        const { error: deleteError } = await supabase.storage.from(process.env.SUPABASE_BUCKET_NAME).remove([imagePath]);
+
+        if (deleteError) {
+            console.error('Error deleting image from Supabase:', deleteError);
+            return next(createError.InternalServerError('Error deleting image from Supabase'));
+        }
+
+        // Update the product record to remove the image URL
+        const updateProductQuery = `
+            UPDATE "Product"
+            SET image = NULL
+            WHERE id = :productId
+        `;
+
+        await sequelize.query(updateProductQuery, {
+            replacements: { productId },
+            type: sequelize.QueryTypes.UPDATE
+        });
+
+        res.send({ message: 'Product image deleted successfully' });
+
+    } catch (error) {
+        console.log(error);
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"));
+        }
+
+        next(createError.BadRequest(`Error in deleting product image: ${error.message}`));
+    }
+}
 
 
 
-module.exports = { createProduct, listAllProducts,updateProductImage, updateProduct, deleteProduct, searchProduct, updateProductAvailabilty, updateProductStockQuantity, getProductById };
+
+
+
+
+module.exports = { createProduct, listAllProducts, updateProductImage, updateProduct, deleteProduct, searchProduct, updateProductAvailabilty, updateProductStockQuantity, getProductById, deleteProductImage };
