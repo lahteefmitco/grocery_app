@@ -2,6 +2,16 @@ const sequelize = require("../helpers/database");
 const JWT = require("../helpers/jwt_helper");
 const createError = require("http-errors");
 
+const createAuthToken = async (req, res, next) => {
+    try {   
+        const token = await JWT.signInAuthToken();
+        res.send(token);
+    } catch (error) {
+        console.log(error);
+        next(error);
+    }
+};
+
 
 const signUp = async (req, res, next) => {
     try {
@@ -297,4 +307,4 @@ const updateUser = async (req, res, next) => {
     }
 }
 
-module.exports = { signUp, signIn, listAllUsers, deleteUser, updateUser };
+module.exports = { createAuthToken,signUp, signIn, listAllUsers, deleteUser, updateUser };

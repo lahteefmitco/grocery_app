@@ -1,40 +1,42 @@
 const { Sequelize } = require("sequelize");
 require("dotenv").config();
 
+const mode = process.env.NODE_ENV || "development";
 
-// const user = "postgres";
-// const host = "localhost";
-// const database = "grocery";
-// const password = "la@1234";
-// const port = "5432";
 
-const user = process.env.AIVEN_DATABASE_USER;
-const host = process.env.AIVEN_DATABASE_HOST;
-const database = process.env.AIVEN_DATABASE_NAME;
-const password = process.env.AIVEN_DATABASE_PASSWORD;
-const port = process.env.AIVEN_DATABASE_PORT;
+const user = mode == "production" ? process.env.AIVEN_DATABASE_USER : "postgres";
+const host = mode == "production" ? process.env.AIVEN_DATABASE_HOST : "localhost";
+const database = mode == "production" ? process.env.AIVEN_DATABASE_NAME : "grocery";
+const password = mode == "production" ? process.env.AIVEN_DATABASE_PASSWORD : "la@1234";
+const port = mode == "production" ? process.env.AIVEN_DATABASE_PORT : "5432";
 
 
 
-const sequelize = new Sequelize(database, user, password, {
+const sequelize = mode == "production" ? new Sequelize(database, user, password, {
+  host,
+  port,
+  dialect: "postgres",
+  logging: false,
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    },
+  },
+}) :
+  new Sequelize(database, user, password, {
     host,
     port,
     dialect: "postgres",
     logging: false,
-    dialectOptions: {
-        ssl: {
-            require: true,
-            rejectUnauthorized: false,
-        },
-    },
-});
+  });
 
 (async () => {
-    try {
-        console.log("Connection established successfully.");
+  try {
+    console.log("Connection established successfully.");
 
-        // Raw query to create the User table
-        await sequelize.query(`
+    // Raw query to create the User table
+    await sequelize.query(`
         CREATE TABLE IF NOT EXISTS "User" (
           id SERIAL PRIMARY KEY, 
           name VARCHAR(255) DEFAULT NULL,
@@ -44,8 +46,8 @@ const sequelize = new Sequelize(database, user, password, {
         );
       `);
 
-        // Raw query to create the Product table
-        await sequelize.query(`
+    // Raw query to create the Product table
+    await sequelize.query(`
             CREATE TABLE IF NOT EXISTS "Product" (
             id SERIAL PRIMARY KEY,
             "productName" VARCHAR(255) NOT NULL UNIQUE,
@@ -59,8 +61,8 @@ const sequelize = new Sequelize(database, user, password, {
 
       `);
 
-        // Raw query to create the Cart table
-        await sequelize.query(`
+    // Raw query to create the Cart table
+    await sequelize.query(`
         CREATE TABLE IF NOT EXISTS "Cart" (
           id SERIAL PRIMARY KEY, 
           "dateTime" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP UNIQUE, 
@@ -72,8 +74,8 @@ const sequelize = new Sequelize(database, user, password, {
         );
       `);
 
-        // Raw query to create the CartProductJunctionTable
-        await sequelize.query(`
+    // Raw query to create the CartProductJunctionTable
+    await sequelize.query(`
         CREATE TABLE IF NOT EXISTS "CartProductJunctionTable" (
           id SERIAL PRIMARY KEY, 
           quantity FLOAT NOT NULL DEFAULT 1.0, 
@@ -86,18 +88,18 @@ const sequelize = new Sequelize(database, user, password, {
         );
       `);
 
-      //  sample table to insert date time
-      await sequelize.query(`
+    //  sample table to insert date time
+    await sequelize.query(`
         CREATE TABLE IF NOT EXISTS "Sample" (
           id SERIAL PRIMARY KEY, 
          "dateTime" TIMESTAMP NOT NULL
         );
       `);
 
-        console.log("Tables are created successfully.");
-    } catch (error) {
-        console.error("Error creating the table:", error);
-    }
+    console.log("Tables are created successfully.");
+  } catch (error) {
+    console.error("Error creating the table:", error);
+  }
 })();
 
 
