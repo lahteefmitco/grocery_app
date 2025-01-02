@@ -1,6 +1,10 @@
 const sequelize = require("../helpers/database");
 const createError = require("http-errors");
 const supabase = require("../helpers/supabase_client");
+const fs = require('fs');
+const path = require('path');
+
+const mode = process.env.NODE_ENV || "development";
 
 
 
@@ -155,8 +159,71 @@ const updateProductImage = async (req, res, next) => {
         console.log(image);
 
 
-        res.send({ message: "Product image updated successfully", image: fileName });
+        res.send({ message: "Product image updated successfully", image });
 
+    } catch (error) {
+        console.log(error);
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"))
+        }
+
+        next(error)
+    }
+}
+
+const uploadImageToLocalFile = async (req, res, next) => {
+    try {
+        const { productId } = req.params;
+
+        if (isNaN(Number(productId))) {
+            return next(createError.BadRequest("Please provide a valid product id"));
+        }
+
+        // Check if the product exists
+        const productQuery = `SELECT * FROM "Product" WHERE id = :productId`;
+        const [product] = await sequelize.query(productQuery, {
+            replacements: { productId },
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        console.log(product);
+
+
+
+
+        if (!product) {
+            return next(createError.NotFound(`Product not found with the given id ${productId}`));
+        }
+
+
+        const file = req.file;
+
+        if (!file) {
+            return res.status(400).send('No image uploaded');
+        }
+
+        // Delete existing image from Local if it exists
+        if (product.image) {
+            const imagePath = product.image;
+            fs.unlinkSync(path.join(__dirname, '..', 'images', imagePath));
+        }
+
+
+        const image = file.filename;
+
+        await sequelize.query(`
+            UPDATE "Product"
+            SET image = :image
+            WHERE id = :productId;
+        `,
+            {
+                replacements: { image, productId },
+            });
+
+        console.log(image);
+
+
+        res.send({ message: "Product image updated successfully", image });
     } catch (error) {
         console.log(error);
         if (error.name === "SequelizeDatabaseError") {
@@ -238,13 +305,13 @@ const updateProduct = async (req, res, next) => {
 
         await sequelize.query(`
             UPDATE "Product"
-            SET productName = :productName, 
-            productDescription = :productDescription,
+            SET "productName" = :productName, 
+            "productDescription" = :productDescription,
             price = :price, 
             image = :image, 
-            stockQuantity = :stockQuantity, 
+            "stockQuantity" = :stockQuantity, 
             unit = :unit,
-            isAvailable = :isAvailable
+            "isAvailable" = :isAvailable
             WHERE id = :productId;
         `,
             {
@@ -329,7 +396,7 @@ const deleteProduct = async (req, res, next) => {
         const { productId } = req.params;
 
         // Check if the product exists
-        const productExistsQuery = `SELECT id FROM "Product" WHERE id = :productId`;
+        const productExistsQuery = `SELECT id, image FROM "Product" WHERE id = :productId`;
         const [productExistsResult] = await sequelize.query(productExistsQuery, {
             replacements: { productId },
             type: sequelize.QueryTypes.SELECT
@@ -344,14 +411,17 @@ const deleteProduct = async (req, res, next) => {
             replacements: { productId },
             type: sequelize.QueryTypes.DELETE
         });
+        
+        console.log("product exists image");
+        
+        console.log(productExistsResult.image);
+        
 
         if (productExistsResult.image) {
-            // Delete the image from Supabase
-            const imagePath = productExistsResult.image.split('/').pop(); // Extract the image path from the URL
-            const { error: deleteError } = await supabase.storage.from(process.env.SUPABASE_BUCKET_NAME).remove([imagePath]);
-
-            if (deleteError) {
-                console.error('Error deleting image from Supabase:', deleteError);
+            
+            const imageDeleteResult = removeProductImage(productExistsResult.image);
+            if (imageDeleteResult === false) {
+                return next(createError.InternalServerError("Error deleting image from Supabase or Local"));
             }
         }
 
@@ -430,13 +500,12 @@ const deleteProductImage = async (req, res, next) => {
             return next(createError.BadRequest("No image found for the given product"));
         }
 
-        // Delete the image from Supabase
-        const imagePath = product.image.split('/').pop(); // Extract the image path from the URL
-        const { error: deleteError } = await supabase.storage.from(process.env.SUPABASE_BUCKET_NAME).remove([imagePath]);
+        
 
-        if (deleteError) {
-            console.error('Error deleting image from Supabase:', deleteError);
-            return next(createError.InternalServerError('Error deleting image from Supabase'));
+        const imageDeleteResult = removeProductImage(product.image);
+
+        if(imageDeleteResult === false){
+            return next(createError.InternalServerError("Error deleting image from Supabase or Local"));
         }
 
         // Update the product record to remove the image URL
@@ -469,4 +538,33 @@ const deleteProductImage = async (req, res, next) => {
 
 
 
-module.exports = { createProduct, listAllProducts, updateProductImage, updateProduct, deleteProduct, searchProduct, updateProductAvailabilty, updateProductStockQuantity, getProductById, deleteProductImage };
+
+
+module.exports = { createProduct, listAllProducts, updateProductImage, updateProduct, deleteProduct, searchProduct, updateProductAvailabilty, updateProductStockQuantity, getProductById, deleteProductImage, uploadImageToLocalFile };
+
+const removeProductImage = async (image) => {
+    try {
+        if (mode === "development") {
+            console.log("development mode");
+            
+            console.log(image);
+            
+            fs.unlinkSync(path.join(__dirname, '..', 'images', image));
+            return true;
+        } else {
+            const imagePath = image.split('/').pop(); // Extract the image path from the URL}
+            const { error } = await supabase.storage.from(process.env.SUPABASE_BUCKET_NAME).remove([imagePath]);
+
+            if (error) {
+                console.error('Error deleting image from Supabase:', error);
+                return false;
+            }
+
+            return true;
+        }
+
+    } catch (error) {
+        console.log(error);
+        return false;
+    }
+}

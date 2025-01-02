@@ -13,17 +13,19 @@ const addToCart = async (req, res, next) => {
         if (!dateTime || !totalItems || !totalAmount || !productList) return next(createError.BadRequest("Missing required fields"));
         if (productList.length === 0) return next(createError.BadRequest("No products in the cart"));
 
-        if(totalItems===0) return next(createError.BadRequest("Total items should be greater than 0"));
+        if (totalItems === 0) return next(createError.BadRequest("Total items should be greater than 0"));
 
         // Calculate totalItems and totalAmount from productList
         let calculatedTotalItems = 0;
         let calculatedTotalAmount = 0;
 
         for (let i = 0; i < productList.length; i++) {
-            const { productId, quantity } = productList[i];
+            const { productId, quantity, productName, soldPrice } = productList[i];
+
+            if (!productId || !quantity || !productName || !soldPrice) return next(createError.BadRequest("Missing required fields in product list"));
 
             const productQuery = `
-                SELECT price, "stockQuantity"
+                SELECT id, "productName","stockQuantity"
                 FROM "Product"
                 WHERE id = :productId
             `;
@@ -36,16 +38,20 @@ const addToCart = async (req, res, next) => {
 
             if (!product) {
                 await t.rollback();
-                return next(createError.BadRequest(`Product with ID ${productId} not found`));
+                return next(createError.BadRequest(`Product with name ${productName} is not found in product list`));
+            }
+            if (product.productName !== productName) {
+                await t.rollback();
+                return next(createError.BadRequest(`Product with name ${productName} is not found`));
             }
 
             if (product.stockQuantity < quantity) {
                 await t.rollback();
-                return next(createError.Forbidden(`Insufficient stock for product ID ${productId}`));
+                return next(createError.Forbidden(`Insufficient stock for product ${productName}`));
             }
 
             calculatedTotalItems += 1;
-            calculatedTotalAmount += product.price * quantity;
+            calculatedTotalAmount += soldPrice * quantity;
         }
 
         console.log(calculatedTotalItems, totalItems, calculatedTotalAmount, totalAmount);
@@ -75,7 +81,7 @@ const addToCart = async (req, res, next) => {
         const cartId = result[0]["id"];
 
         for (let i = 0; i < productList.length; i++) {
-            const { productId, quantity } = productList[i];
+            const { productId, quantity, productName, soldPrice } = productList[i];
 
             // Decrement the stock quantity in the Product table
             const updateProductQuery = `
@@ -113,10 +119,10 @@ const addToCart = async (req, res, next) => {
 
             // Insert into CartProductJunctionTable
             await sequelize.query(`
-                INSERT INTO "CartProductJunctionTable" ("cartId", "productId", "quantity")
-                VALUES (:cartId, :productId, :quantity);
+                INSERT INTO "CartProductJunctionTable" ("cartId", "productId", "quantity","productName","soldPrice")
+                VALUES (:cartId, :productId, :quantity,:productName,:soldPrice);
             `, {
-                replacements: { cartId, productId, quantity },
+                replacements: { cartId, productId, quantity, productName, soldPrice },
                 transaction: t
             });
         }
@@ -163,17 +169,18 @@ const getCartById = async (req, res, next) => {
         }
 
 
+        // Date is changed to iso format
         let date = new Date(cart.dateTime);
         date.setMinutes(date.getMinutes() + 330);
         cart.dateTime = date.toISOString().slice(0, -1);
 
 
 
-
+        // Query to get the products in the cart 
         const productQuery = `
-            SELECT p.*, cp.quantity 
+            SELECT p.*, cp.quantity,cp."productName",cp."soldPrice" 
             FROM "CartProductJunctionTable" cp
-            JOIN "Product" p ON cp."productId" = p.id
+            LEFT JOIN "Product" p ON cp."productId" = p.id
             WHERE cp."cartId" = :cartId
         `;
 
@@ -182,10 +189,20 @@ const getCartById = async (req, res, next) => {
             type: sequelize.QueryTypes.SELECT
         });
 
-        // Separate quantity and product details
+        // Separate quantity and product details, and set product to null if all values are null
         const productDetails = products.map(product => {
-            const { quantity, ...productInfo } = product;
-            return { quantity, product: productInfo };
+            const { quantity, productName, soldPrice, id, productDescription, price, image, stockQuantity, unit, isAvailable } = product;
+            const productInfo = { id, productDescription, price, image, stockQuantity, unit, isAvailable };
+
+            // Check if all product properties are null
+            const isProductNull = Object.values(productInfo).every(value => value === null);
+
+            return {
+                quantity,
+                productName,
+                soldPrice,
+                product: isProductNull ? null : productInfo
+            };
         });
 
         res.send({ cart, products: productDetails });
@@ -200,12 +217,15 @@ const getCartById = async (req, res, next) => {
     }
 }
 
+
+
+
 const listAllCarts = async (req, res, next) => {
     try {
-        const {isAdmin} = req.payload;
+        const { isAdmin } = req.payload;
         console.log(isAdmin);
-        
-        if(!isAdmin) return next(createError.Unauthorized("You are not authorized to view this page"));
+
+        if (!isAdmin) return next(createError.Unauthorized("You are not authorized to view this page"));
 
         const listQuery = `SELECT * FROM "Cart"`;
 
@@ -213,42 +233,15 @@ const listAllCarts = async (req, res, next) => {
             type: sequelize.QueryTypes.SELECT
         });
 
-        const productQuery = `
-            SELECT p.*, cp.quantity 
-            FROM "CartProductJunctionTable" cp
-            JOIN "Product" p ON cp."productId" = p.id
-            WHERE cp."cartId" = :cartId
-        `;
-
-        const cartList = [];
-
-        for (let index = 0; index < carts.length; index++) {
-            const cart = carts[index];
-
+        carts.forEach(cart => {
             let date = new Date(cart.dateTime);
             date.setMinutes(date.getMinutes() + 330);
             cart.dateTime = date.toISOString().slice(0, -1);
-
-            const cartId = cart.id;
-
-            const products = await sequelize.query(productQuery, {
-                replacements: { cartId },
-                type: sequelize.QueryTypes.SELECT
-            });
-
-            // Separate quantity and product details
-            const productDetails = products.map(product => {
-                const { quantity, ...productInfo } = product;
-                return { quantity, product: productInfo };
-            });
-
-
-            cartList.push({ cart, products: productDetails });
-        }
+        });
 
 
 
-        res.send(cartList);
+        res.send(carts);
 
     } catch (error) {
         console.log(error);
@@ -296,6 +289,53 @@ const getCartsByUserId = async (req, res, next) => {
     }
 }
 
+
+const searchCartsBetweenDates = async (req, res, next) => {
+    try {
+        const { startDate, endDate } = req.query;
+
+        if (!startDate || !endDate) {
+            return next(createError.BadRequest("Please provide both startDate and endDate"));
+        }
+
+        // Validate date format (optional, but recommended)
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+            return next(createError.BadRequest("Invalid date format"));
+        }
+
+        // Query to get the carts between the specified dates
+        const cartsQuery = `
+            SELECT * FROM "Cart"
+            WHERE "dateTime" BETWEEN :startDate AND :endDate
+        `;
+
+        const carts = await sequelize.query(cartsQuery, {
+            replacements: { startDate, endDate },
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        // Convert dateTime to ISO format and adjust time zone if needed
+        carts.forEach(cart => {
+            let date = new Date(cart.dateTime);
+            date.setMinutes(date.getMinutes() + 330); // Adjust time zone if needed
+            cart.dateTime = date.toISOString().slice(0, -1); // Remove the trailing 'Z'
+        });
+
+        res.send(carts);
+
+    } catch (error) {
+        console.log(error);
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"));
+        }
+
+        next(createError.InternalServerError(`Error in searching carts: ${error.message}`));
+    }
+}
+
 const updateCartWithProducts = async (req, res, next) => {
     const t = await sequelize.transaction();
     try {
@@ -309,7 +349,7 @@ const updateCartWithProducts = async (req, res, next) => {
 
         if (!dateTime || !totalItems || !totalAmount || !productList) return next(createError.BadRequest("Missing required fields"));
         if (productList.length === 0) return next(createError.BadRequest("No products in the cart"));
-        if(totalItems===0) return next(createError.BadRequest("Total items should be greater than 0"));
+        if (totalItems === 0) return next(createError.BadRequest("Total items should be greater than 0"));
 
 
         // Calculate totalItems and totalAmount from productList
@@ -317,13 +357,15 @@ const updateCartWithProducts = async (req, res, next) => {
         let calculatedTotalAmount = 0;
 
         for (let i = 0; i < productList.length; i++) {
-            const { productId, quantity } = productList[i];
+            const { productId, quantity, productName, soldPrice } = productList[i];
+
+            if (!productId || !quantity || !productName || !soldPrice) return next(createError.BadRequest("Missing required fields in product list"));
 
             const productQuery = `
-                SELECT price, "stockQuantity"
-                FROM "Product"
-                WHERE id = :productId
-            `;
+               SELECT id, "productName","stockQuantity"
+               FROM "Product"
+               WHERE id = :productId
+           `;
 
             const [product] = await sequelize.query(productQuery, {
                 replacements: { productId },
@@ -333,16 +375,20 @@ const updateCartWithProducts = async (req, res, next) => {
 
             if (!product) {
                 await t.rollback();
-                return next(createError.BadRequest(`Product with ID ${productId} not found`));
+                return next(createError.BadRequest(`Product with name ${productName} is not found`));
+            }
+            if (product.productName !== productName) {
+                await t.rollback();
+                return next(createError.BadRequest(`Product with name ${productName} is not found`));
             }
 
             if (product.stockQuantity < quantity) {
                 await t.rollback();
-                return next(createError.Forbidden(`Insufficient stock for product ID ${productId}`));
+                return next(createError.Forbidden(`Insufficient stock for product ${productName}`));
             }
 
             calculatedTotalItems += 1;
-            calculatedTotalAmount += product.price * quantity;
+            calculatedTotalAmount += soldPrice * quantity;
         }
 
         console.log(calculatedTotalItems, totalItems, calculatedTotalAmount, totalAmount);
@@ -358,6 +404,19 @@ const updateCartWithProducts = async (req, res, next) => {
         if (calculatedTotalAmount.toFixed(2) !== totalAmount.toFixed(2)) {
             await t.rollback();
             return next(createError.BadRequest("Total amount does not match the calculated values"));
+        }
+
+        const cartQuery = `SELECT * FROM "Cart" WHERE id = :cartId`;
+
+        const [cart] = await sequelize.query(cartQuery, {
+            replacements: { cartId },
+            type: sequelize.QueryTypes.SELECT,
+            transaction: t
+        });
+
+        if(!cart) {
+            await t.rollback();
+            return next(createError.NotFound(`Cart not found with ${cartId}`));
         }
 
         // Update the cart details
@@ -391,17 +450,19 @@ const updateCartWithProducts = async (req, res, next) => {
         // Increment the stock quantity in the Product table for existing products
         for (const product of existingProducts) {
             const { productId, quantity } = product;
-            const incrementProductQuery = `
+            if (productId !== null) {
+                const incrementProductQuery = `
                 UPDATE "Product"
                 SET "stockQuantity" = "stockQuantity" + :quantity
                 WHERE id = :productId
             `;
 
-            await sequelize.query(incrementProductQuery, {
-                replacements: { productId, quantity },
-                type: sequelize.QueryTypes.UPDATE,
-                transaction: t
-            });
+                await sequelize.query(incrementProductQuery, {
+                    replacements: { productId, quantity },
+                    type: sequelize.QueryTypes.UPDATE,
+                    transaction: t
+                });
+            }
         }
 
         // Delete existing products in the cart
@@ -418,14 +479,14 @@ const updateCartWithProducts = async (req, res, next) => {
 
         // Insert new products into the cart and decrement the stock quantity
         for (const product of productList) {
-            const { productId, quantity } = product;
+            const { productId, quantity, productName, soldPrice } = product;
             const insertProductQuery = `
-                INSERT INTO "CartProductJunctionTable" ("cartId", "productId", quantity)
-                VALUES (:cartId, :productId, :quantity)
+                INSERT INTO "CartProductJunctionTable" ("cartId", "productId", quantity,"productName","soldPrice")
+                VALUES (:cartId, :productId, :quantity,:productName,:soldPrice)
             `;
 
             await sequelize.query(insertProductQuery, {
-                replacements: { cartId, productId, quantity },
+                replacements: { cartId, productId, quantity,productName,soldPrice },
                 type: sequelize.QueryTypes.INSERT,
                 transaction: t
             });
@@ -506,30 +567,32 @@ const deleteCartWithProducts = async (req, res, next) => {
         });
 
         console.log(products);
-        if(products.length === 0) {
+        if (products.length === 0) {
             await t.rollback();
             return next(createError.NotFound("No cart with this id or No products found for this cart"));
         }
-        
+
 
         // Increment the stock quantity in the Product table
         for (const product of products) {
             const { productId, quantity } = product;
-            const updateProductQuery = `
+            if (productId !== null) {
+                const updateProductQuery = `
                 UPDATE "Product"
                 SET "stockQuantity" = "stockQuantity" + :quantity
                 WHERE id = :productId
             `;
 
-            await sequelize.query(updateProductQuery, {
-                replacements: { productId, quantity },
-                type: sequelize.QueryTypes.UPDATE,
-                transaction: t
-            });
+                await sequelize.query(updateProductQuery, {
+                    replacements: { productId, quantity },
+                    type: sequelize.QueryTypes.UPDATE,
+                    transaction: t
+                });
+            }
         }
 
         console.log("Stock quantity incremented successfully");
-        
+
 
         // Delete products associated with the cart
         const deleteProductsQuery = `
@@ -544,7 +607,7 @@ const deleteCartWithProducts = async (req, res, next) => {
         });
 
         console.log("Products deleted successfully");
-        
+
 
         // Delete the cart
         const deleteCartQuery = `
@@ -565,18 +628,18 @@ const deleteCartWithProducts = async (req, res, next) => {
 
         console.log(metadata);
         console.log(result["id"]);
-        
-        
-        
+
+
+
         console.log(cartId);
-        
-        if (result["id"]!=cartId) {
+
+        if (result["id"] != cartId) {
             await t.rollback();
             return next(createError.NotFound("Cart not found"));
         }
 
         console.log("Cart and associated products deleted successfully");
-        
+
 
         await t.commit();
         res.send("Cart and associated products deleted successfully");
@@ -598,7 +661,10 @@ const deleteCartWithProducts = async (req, res, next) => {
 
 
 
-module.exports = { addToCart, listAllCarts, getCartById, getCartsByUserId, updateCartWithProducts, deleteCartWithProducts };
+module.exports = { addToCart, listAllCarts, getCartById, getCartsByUserId, updateCartWithProducts, deleteCartWithProducts, searchCartsBetweenDates };
+
+
+
 
 
 

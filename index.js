@@ -4,10 +4,26 @@ const sequelize = require("./helpers/database");
 const JWT = require("./helpers/jwt_helper");
 require("dotenv").config();
 
+const fs = require('fs');
+const path = require('path');
+
+const mode = process.env.NODE_ENV || "development";
 
 
-
-
+const createFolderIfNotExists = (folderName) => {
+  const folderPath = path.join(__dirname, folderName);
+  if (!fs.existsSync(folderPath)) {
+      fs.mkdir(folderPath, { recursive: true }, (err) => {
+          if (err) {
+              console.error(`Error creating folder "${folderName}":`, err);
+          } else {
+              console.log(`Folder "${folderName}" created successfully.`);
+          }
+      });
+  } else {
+      console.log(`Folder "${folderName}" already exists.`);
+  }
+};
 
 const app = express();
 app.use(express.json());
@@ -21,6 +37,12 @@ sequelize.sync({ force: true }).then(
     console.log(error);
   }
 );
+
+if(mode === "development"){
+  createFolderIfNotExists("images");
+  app.use("/images", express.static(path.join(__dirname, "images")));
+
+}
 
 
 app.get("/", (req, res) => {
@@ -64,15 +86,9 @@ app.listen(PORT, () => console.log(`App is listening on http://localhost:${PORT}
 
 
 
-function verifyOwner(req, res, next) {
-  const { owner } = req.headers;
 
-  if (!owner) return next(createError.BadRequest("Owner is not defined"));
 
-  if (owner == "OXDO") return next();
 
-  return next(createError.Unauthorized("invalid owner"));
-}
 
 
 

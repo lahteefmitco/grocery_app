@@ -12,7 +12,7 @@ module.exports = {
             };
             const secret = process.env.AUTH_TOKEN_SECRET;
             const option = {
-                expiresIn: "40d",
+                expiresIn: "90d",
                 issuer: "oxdotechnologies.com",
             };
             JWT.sign(payload, secret, option, (err, token) => {

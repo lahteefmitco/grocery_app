@@ -68,8 +68,8 @@ const sequelize = mode == "production" ? new Sequelize(database, user, password,
           "dateTime" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP UNIQUE, 
           "totalItems" FLOAT NOT NULL DEFAULT 0.0, 
           "totalAmount" DECIMAL NOT NULL, 
-          "userId" INTEGER NOT NULL REFERENCES "User"(id) 
-            ON DELETE NO ACTION 
+          "userId" INTEGER REFERENCES "User"(id) 
+            ON DELETE SET NULL 
             ON UPDATE CASCADE
         );
       `);
@@ -79,11 +79,13 @@ const sequelize = mode == "production" ? new Sequelize(database, user, password,
         CREATE TABLE IF NOT EXISTS "CartProductJunctionTable" (
           id SERIAL PRIMARY KEY, 
           quantity FLOAT NOT NULL DEFAULT 1.0, 
+          "productName" VARCHAR(255) NOT NULL,
+          "soldPrice" DECIMAL(9,2) NOT NULL,
           "cartId" INTEGER NOT NULL REFERENCES "Cart"(id) 
             ON DELETE CASCADE 
             ON UPDATE CASCADE, 
-          "productId" INTEGER NOT NULL REFERENCES "Product"(id) 
-            ON DELETE NO ACTION 
+          "productId" INTEGER REFERENCES "Product"(id)
+            ON DELETE SET NULL 
             ON UPDATE CASCADE
         );
       `);
