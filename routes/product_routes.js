@@ -2,6 +2,7 @@ const router = require("express").Router();
 const JWT = require("../helpers/jwt_helper");
 const ProductController = require("../controllers/product_controller");
 const path = require('path');
+const AdminVerification = require("../helpers/verify_admin");
 require("dotenv").config();
 const multer = require("multer");
 
@@ -36,20 +37,31 @@ const upload = multer({ storage: mode === "development" ? storage : multer.memor
 
 
 
-router.post("/createProduct", JWT.verifyAccessToken, ProductController.createProduct);
+router.post("/createProduct", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.createProduct);
 
 router.get("/listAllProducts", JWT.verifyAccessToken, ProductController.listAllProducts);
 
 router.get("/getAProduct/:productId", JWT.verifyAccessToken, ProductController.getProductById);
 
-router.put("/updateAProduct/:productId", JWT.verifyAccessToken, ProductController.updateProduct);
+router.get("/searchProducts", JWT.verifyAccessToken, ProductController.searchProduct);
 
-router.delete("/deleteAProduct/:productId", JWT.verifyAccessToken, ProductController.deleteProduct);
+router.get("/listAllAvailableProducts", JWT.verifyAccessToken, ProductController.listAllAvailableProducts);
 
-router.patch("/updateProductImage/:productId/:productName", JWT.verifyAccessToken, upload.single('image'), mode === "development" ? ProductController.uploadImageToLocalFile :  ProductController.updateProductImage);
+router.get("/getProductInventory", JWT.verifyAccessToken, ProductController.getProductInventory);
 
-router.delete("/deleteProductImage/:productId", JWT.verifyAccessToken, ProductController.deleteProductImage);
+router.put("/updateAProduct/:productId", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.updateProduct);
 
-router.post("/sampleProductImageUpload/:productId/:productName", upload.single('image'), ProductController.uploadImageToLocalFile);
+router.delete("/deleteAProduct/:productId", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.deleteProduct);
+
+router.patch("/updateProductImage/:productId/:productName", JWT.verifyAccessToken, AdminVerification.verifyAdmin, upload.single('image'), mode === "development" ? ProductController.uploadImageToLocalFile :  ProductController.updateProductImage);
+
+router.patch("/updateProductStock/:productId", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.updateProductStockQuantity);
+
+router.patch("/updateProductPrice/:productId", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.updateProductPrice);
+
+router.patch("/updateProductAvailability/:productId", JWT.verifyAccessToken,AdminVerification.verifyAdmin, ProductController.updateProductAvailability);
+
+router.delete("/deleteProductImage/:productId", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.deleteProductImage);
+
 
 module.exports = router;
