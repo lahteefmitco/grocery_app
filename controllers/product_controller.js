@@ -1,10 +1,17 @@
 const sequelize = require("../helpers/database");
 const createError = require("http-errors");
-const supabase = require("../helpers/supabase_client");
+
+
 const fs = require('fs');
 const path = require('path');
 
+require("dotenv").config();
+
 const mode = process.env.NODE_ENV || "development";
+
+if(mode === "production"){
+    const supabase = require("../helpers/supabase_client");
+}
 
 
 
