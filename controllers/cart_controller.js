@@ -146,6 +146,42 @@ const addToCart = async (req, res, next) => {
 }
 
 
+const addToCart2 = async (req, res, next) => {
+    try {
+        const userId = req.payload.userId;
+        const receivedData = req.body;
+        const { dateTime, totalItems, totalAmount, productList } = receivedData;
+
+        if (!dateTime || !totalItems || !totalAmount || !productList) return next(createError.BadRequest("Missing required fields"));
+        if (productList.length === 0) return next(createError.BadRequest("No products in the cart"));
+        if (totalItems === 0) return next(createError.BadRequest("Total items should be greater than 0"));
+
+        const productListJson = JSON.stringify(productList);
+
+        const [result] = await sequelize.query(`
+            SELECT * FROM add_to_cart(:userId, :dateTime, :totalItems, :totalAmount, :productListJson)
+        `, {
+            replacements: { userId, dateTime, totalItems, totalAmount, productListJson },
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        res.send({ message: "Added to cart successfully", cartId: result.cart_id });
+
+    } catch (error) {
+        console.log(error);
+        if (error.name === "SequelizeDatabaseError") {
+            console.log("sequalize error in addToCart2-------");
+            
+            console.log(error.message);
+            
+            return next(createError.InternalServerError(`Database problem, please contact with developer ${error.message}`));
+        }
+
+        return next(createError.BadRequest(`Error in adding to cart ${error.message}`));
+    }
+}
+
+
 
 
 const getCartById = async (req, res, next) => {
@@ -222,10 +258,7 @@ const getCartById = async (req, res, next) => {
 
 const listAllCarts = async (req, res, next) => {
     try {
-        const { isAdmin } = req.payload;
-        console.log(isAdmin);
-
-        if (!isAdmin) return next(createError.Unauthorized("You are not authorized to view this page"));
+        
 
         const listQuery = `SELECT * FROM "Cart"`;
 
@@ -661,7 +694,11 @@ const deleteCartWithProducts = async (req, res, next) => {
 
 
 
-module.exports = { addToCart, listAllCarts, getCartById, getCartsByUserId, updateCartWithProducts, deleteCartWithProducts, searchCartsBetweenDates };
+module.exports = { addToCart, addToCart2, listAllCarts, getCartById, getCartsByUserId, updateCartWithProducts, deleteCartWithProducts, searchCartsBetweenDates };
+
+
+
+
 
 
 

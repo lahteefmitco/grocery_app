@@ -50,7 +50,7 @@ const signUp = async (req, res, next) => {
 
 
 
-        res.send({ token: accessToken, name })
+        res.send({ token: accessToken, name, isAdmin })
 
 
 
@@ -109,7 +109,7 @@ const signIn = async (req, res, next) => {
 
 
 
-        res.send({ token: accessToken, name })
+        res.send({ token: accessToken, name, isAdmin })
 
 
 
@@ -125,12 +125,7 @@ const signIn = async (req, res, next) => {
 
 const listAllUsers = async (req, res, next) => {
     try {
-        const { isAdmin } = req.payload;
-
-        console.log(isAdmin);
-
-
-        if (!isAdmin) return next(createError.BadRequest("Admin users only allowed to fetch user list"));
+       
 
 
         const query = `
@@ -161,12 +156,7 @@ const listAllUsers = async (req, res, next) => {
 
 const deleteUser = async (req, res, next) => {
     try {
-        const { isAdmin, userId } = req.payload;
-
-        console.log(isAdmin);
-
-
-        if (!isAdmin) return next(createError.Forbidden("Admin users only allowed to delete user"));
+        
 
         const userIdToDelete = req.params.id;
 
@@ -229,12 +219,7 @@ const updateUser = async (req, res, next) => {
 
         const {userId} = req.payload;
         
-        console.log(req.payload.isAdmin);
-        console.log(userId);
-        
-        
-
-        if (!req.payload.isAdmin) return next(createError.Forbidden("Admin users only allowed to update users"));
+       
 
         const userIdToUpdate = req.params.id;
 

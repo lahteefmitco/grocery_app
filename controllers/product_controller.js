@@ -54,6 +54,32 @@ const createProduct = async (req, res, next) => {
 }
 
 
+const listAllAvailableProducts = async (req, res, next) => {
+    try {
+        // Query to get all available products
+        const productQuery = `
+            SELECT * FROM "Product"
+            WHERE "isAvailable" = true
+        `;
+
+        const products = await sequelize.query(productQuery, {
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        res.send(products);
+
+    } catch (error) {
+        console.log(error);
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"));
+        }
+
+        next(createError.BadRequest(`Error in listing available products: ${error.message}`));
+    }
+}
+
+
+
 
 
 const listAllProducts = async (req, res, next) => {
@@ -295,10 +321,23 @@ const updateProduct = async (req, res, next) => {
         }
         if (!stockQuantity) {
             stockQuantity = 0;
+            isAvailable = false;
         }
 
         if (isAvailable === undefined) {
             return next(createError.BadRequest("Please provide isAvailable value of the product"));
+        }
+
+        if (isNaN(Number(price))) {
+            return next(createError.BadRequest("Please provide a valid price"));
+        }
+
+        if(isNaN(Number(stockQuantity)) || stockQuantity < 0){
+            return next(createError.BadRequest("Please provide a valid stock quantity"));
+        }
+
+        if(stockQuantity === 0){
+            isAvailable = false;
         }
 
 
@@ -331,8 +370,69 @@ const updateProduct = async (req, res, next) => {
 }
 
 
-const updateProductAvailabilty = async (isAvailable, productId) => {
+const updateProductPrice = async (req, res, next) => {
     try {
+        const { productId } = req.params;
+        const { price } = req.body;
+
+        
+
+        // Validate the input
+        if (!productId || isNaN(Number(productId))) {
+            return next(createError.BadRequest("Please provide a valid product ID"));
+        }
+
+        if (price === undefined || isNaN(Number(price))) {
+            return next(createError.BadRequest("Please provide a valid price"));
+        }
+
+        if (price <= 0) {
+            return next(createError.BadRequest("Price should be greater than 0"));
+        }
+
+        // Update the product price
+        await sequelize.query(`
+            UPDATE "Product"
+            SET price = :price
+            WHERE id = :productId;
+        `, {
+            replacements: { price, productId },
+        });
+
+        res.send({ message: "Product price updated successfully" });
+
+    } catch (error) {
+        console.log(error);
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError(`Database problem, please contact with developer ${error.message}`));
+        }
+
+        next(createError.BadRequest(`Error in updating product price: ${error.message}`));
+    }
+}
+
+
+
+
+
+const updateProductAvailability = async (req,res,next) => {
+    try {
+
+
+        const { productId } = req.params;
+
+        // Check if the product exists
+        const productExistsQuery = `SELECT id FROM "Product" WHERE id = :productId`;
+        const [productExistsResult] = await sequelize.query(productExistsQuery, {
+            replacements: { productId },
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        if (!productExistsResult) {
+            return next(createError.NotFound(`Product with  ${productId} not found`));
+        }
+
+        const { isAvailable } = req.body;
 
 
         if (isAvailable === undefined) {
@@ -341,14 +441,14 @@ const updateProductAvailabilty = async (isAvailable, productId) => {
 
         await sequelize.query(`
             UPDATE "Product"
-            SET isAvailable = :isAvailable
+            SET "isAvailable" = :isAvailable
             WHERE id = :productId;
         `,
             {
                 replacements: { isAvailable, productId },
             });
 
-        return true;
+        res.send({ message: "Product availability updated successfully" });
 
     } catch (error) {
         console.log(error);
@@ -361,8 +461,38 @@ const updateProductAvailabilty = async (isAvailable, productId) => {
 }
 
 
-const updateProductStockQuantity = async (stockQuantity, productId) => {
+const updateProductStockQuantity = async (req,res,next) => {
     try {
+
+
+        const { productId } = req.params;
+
+         // Check if the product exists
+         const productExistsQuery = `SELECT id FROM "Product" WHERE id = :productId`;
+         const [productExistsResult] = await sequelize.query(productExistsQuery, {
+             replacements: { productId },
+             type: sequelize.QueryTypes.SELECT
+         });
+ 
+         if (!productExistsResult) {
+             return next(createError.NotFound(`Product with  ${productId} not found`));
+         }
+
+
+
+        const { stockQuantity} = req.body;
+
+        if(stockQuantity === undefined){
+            return next(createError.BadRequest("Please provide stock quantity"));
+        }
+
+        if(isNaN(Number(stockQuantity))){
+            return next(createError.BadRequest("Please provide a valid stock quantity"));
+        }
+
+        if(stockQuantity <=0){
+            return next(createError.BadRequest("Stock quantity should be greater than 0"));
+        }
 
 
         if (!stockQuantity) {
@@ -371,19 +501,19 @@ const updateProductStockQuantity = async (stockQuantity, productId) => {
 
         await sequelize.query(`
             UPDATE "Product"
-            SET stockQuantity = :stockQuantity
+            SET "stockQuantity" = :stockQuantity
             WHERE id = :productId;
         `,
             {
                 replacements: { stockQuantity, productId },
             });
 
-        return true;
+        res.send({ message: "Stock quantity updated successfully" });
 
     } catch (error) {
         console.log(error);
         if (error.name === "SequelizeDatabaseError") {
-            return next(createError.InternalServerError("Database problem, please contact with developer"))
+            return next(createError.InternalServerError(`Database problem, please contact with developer ${error.message}`))
         }
 
         createError.InternalServerError("Please provide stock quantity");
@@ -451,7 +581,7 @@ const searchProduct = async (req, res, next) => {
 
         const searchQuery = `
             SELECT * FROM "Product"
-            WHERE productName ILIKE :productName
+            WHERE "productName" ILIKE :productName
         `;
 
         const products = await sequelize.query(searchQuery, {
@@ -534,13 +664,41 @@ const deleteProductImage = async (req, res, next) => {
 
 
 
+const getProductInventory = async (req, res, next) => {
+    try {
+        
+
+        // Query to get the product inventory
+        const productQuery = `
+            SELECT id, "productName", "stockQuantity", "isAvailable"
+            FROM "Product"
+        `;
+
+        const products = await sequelize.query(productQuery, {
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        res.send(products);
+
+    } catch (error) {
+        console.log(error);
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"));
+        }
+
+        next(createError.BadRequest(`Error in getting product inventory: ${error.message}`));
+    }
+}
 
 
 
 
 
 
-module.exports = { createProduct, listAllProducts, updateProductImage, updateProduct, deleteProduct, searchProduct, updateProductAvailabilty, updateProductStockQuantity, getProductById, deleteProductImage, uploadImageToLocalFile };
+
+
+
+module.exports = { createProduct, listAllAvailableProducts, listAllProducts, updateProductImage, updateProduct, deleteProduct, searchProduct, updateProductAvailability, updateProductStockQuantity, getProductById, deleteProductImage, uploadImageToLocalFile, updateProductPrice, getProductInventory};
 
 const removeProductImage = async (image) => {
     try {
@@ -568,3 +726,22 @@ const removeProductImage = async (image) => {
         return false;
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
