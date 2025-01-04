@@ -10,7 +10,12 @@ require("dotenv").config();
 const mode = process.env.NODE_ENV || "development";
 
 if(mode === "production"){
+    console.log("production mode");
+    
     const supabase = require("../helpers/supabase_client");
+}else{
+    console.log("development mode");
+    
 }
 
 
