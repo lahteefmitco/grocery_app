@@ -4,7 +4,7 @@ const CartController = require("../controllers/cart_controller");
 const AdminVerification = require("../helpers/verify_admin");
 
 
-
+router.get("/sampleQuery",CartController.sampleQuery);
 router.post("/addToCart", JWT.verifyAccessToken, CartController.addToCart);
 router.post("/addToCart2", JWT.verifyAccessToken, CartController.addToCart2);
 router.get("/listAllCarts", JWT.verifyAccessToken, AdminVerification.verifyAdmin, CartController.listAllCarts);

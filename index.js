@@ -49,7 +49,7 @@ app.get("/", (req, res) => {
   res.send("Welcome to OXDO Technologies");
 });
 
-app.get("/createAuthToken", async (req, res, next) => {
+app.get("/createApiKey", async (req, res, next) => {
   try {
     if (req.headers.owner !== "OXDO") return next(createError.Unauthorized("Invalid owner"));
     const token = await JWT.signInAuthToken();

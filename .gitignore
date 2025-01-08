@@ -6,3 +6,6 @@ node_modules/
 
 #Ignore images
 images/
+
+#sqlite database
+database.sqlite

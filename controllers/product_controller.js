@@ -2,6 +2,7 @@ const sequelize = require("../helpers/database");
 const createError = require("http-errors");
 
 
+
 const fs = require('fs');
 const path = require('path');
 
@@ -9,14 +10,7 @@ require("dotenv").config();
 
 const mode = process.env.NODE_ENV || "development";
 
-if(mode === "production"){
-    console.log("production mode");
-    
-    const supabase = require("../helpers/supabase_client");
-}else{
-    console.log("development mode");
-    
-}
+
 
 
 
@@ -35,18 +29,42 @@ const createProduct = async (req, res, next) => {
         if (!stockQuantity) {
             stockQuantity = 0;
         }
-        const [result, metadata] = await sequelize.query(`
+        let productId = 0;
+
+        // production
+        if (mode == "production") {
+            const [result, metadata] = await sequelize.query(`
             INSERT INTO "Product" ("productName", "productDescription", "price", "image", "stockQuantity", "unit")
             VALUES (:productName, :productDescription, :price, :image, :stockQuantity, :unit)
             RETURNING id;
-        `,
-            {
-                replacements: { productName, productDescription, price, image, stockQuantity, unit },
-            });
+            `,
+                {
+                    replacements: { productName, productDescription, price, image, stockQuantity, unit },
+                });
 
-        console.log(result);
+            
 
-        const productId = result[0]["id"];
+            productId = result[0]["id"];
+        } else {
+             await sequelize.query(`
+                INSERT INTO "Product" ("productName", "productDescription", "price", "image", "stockQuantity", "unit")
+                VALUES (:productName, :productDescription, :price, :image, :stockQuantity, :unit);
+                `,
+                {
+                    replacements: { productName, productDescription, price, image, stockQuantity, unit },
+                });
+
+                // Get the ID of the last inserted row
+                const [result] = await sequelize.query(`
+                SELECT last_insert_rowid() AS id;
+                `, 
+                {
+                    type: sequelize.QueryTypes.SELECT
+                });
+
+                productId = result.id;
+
+        }
 
         res.status(201).send({ message: "Product created successfully", productId });
 
@@ -127,6 +145,7 @@ const listAllProducts = async (req, res, next) => {
 
 const updateProductImage = async (req, res, next) => {
     try {
+        const supabase = require("../helpers/supabase_client");
         const { productId } = req.params;
 
         if (isNaN(Number(productId))) {
@@ -172,6 +191,9 @@ const updateProductImage = async (req, res, next) => {
             }
         }// Generate a unique filename
 
+        console.log("Supabase");
+        
+
         // Upload the file buffer directly to Supabase
         const { data, error } = await supabase.storage
             .from(process.env.SUPABASE_BUCKET_NAME)
@@ -181,6 +203,9 @@ const updateProductImage = async (req, res, next) => {
             });
 
         if (error) throw error;
+
+        console.log("passed");
+        
 
 
         const image = `${process.env.SUPABASE_URL}/storage/v1/object/public/${process.env.SUPABASE_BUCKET_NAME}/${fileName}`;
@@ -309,7 +334,7 @@ const updateProduct = async (req, res, next) => {
         const { productId } = req.params;
 
         // Check if the product exists
-        const productExistsQuery = `SELECT id FROM "Product" WHERE id = :productId`;
+        const productExistsQuery = `SELECT id, image FROM "Product" WHERE id = :productId`;
         const [productExistsResult] = await sequelize.query(productExistsQuery, {
             replacements: { productId },
             type: sequelize.QueryTypes.SELECT
@@ -318,6 +343,9 @@ const updateProduct = async (req, res, next) => {
         if (!productExistsResult) {
             return next(createError.NotFound(`Product with  ${productId} not found`));
         }
+
+        console.log(`Product exist result ${productExistsResult}`);
+        
 
         var { productName, productDescription, price, image, stockQuantity, unit, isAvailable } = req.body;
 
@@ -344,11 +372,11 @@ const updateProduct = async (req, res, next) => {
             return next(createError.BadRequest("Please provide a valid price"));
         }
 
-        if(isNaN(Number(stockQuantity)) || stockQuantity < 0){
+        if (isNaN(Number(stockQuantity)) || stockQuantity < 0) {
             return next(createError.BadRequest("Please provide a valid stock quantity"));
         }
 
-        if(stockQuantity === 0){
+        if (stockQuantity === 0) {
             isAvailable = false;
         }
 
@@ -369,6 +397,12 @@ const updateProduct = async (req, res, next) => {
                 replacements: { productName, productDescription, price, image, stockQuantity, unit, isAvailable, productId },
             });
 
+            if(image ===null && productExistsResult.image){
+                removeProductImage(productExistsResult.image);
+            }
+
+        
+
         res.send({ message: "Product is updated successfully" });
 
     } catch (error) {
@@ -387,7 +421,7 @@ const updateProductPrice = async (req, res, next) => {
         const { productId } = req.params;
         const { price } = req.body;
 
-        
+
 
         // Validate the input
         if (!productId || isNaN(Number(productId))) {
@@ -427,7 +461,7 @@ const updateProductPrice = async (req, res, next) => {
 
 
 
-const updateProductAvailability = async (req,res,next) => {
+const updateProductAvailability = async (req, res, next) => {
     try {
 
 
@@ -473,36 +507,36 @@ const updateProductAvailability = async (req,res,next) => {
 }
 
 
-const updateProductStockQuantity = async (req,res,next) => {
+const updateProductStockQuantity = async (req, res, next) => {
     try {
 
 
         const { productId } = req.params;
 
-         // Check if the product exists
-         const productExistsQuery = `SELECT id FROM "Product" WHERE id = :productId`;
-         const [productExistsResult] = await sequelize.query(productExistsQuery, {
-             replacements: { productId },
-             type: sequelize.QueryTypes.SELECT
-         });
- 
-         if (!productExistsResult) {
-             return next(createError.NotFound(`Product with  ${productId} not found`));
-         }
+        // Check if the product exists
+        const productExistsQuery = `SELECT id FROM "Product" WHERE id = :productId`;
+        const [productExistsResult] = await sequelize.query(productExistsQuery, {
+            replacements: { productId },
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        if (!productExistsResult) {
+            return next(createError.NotFound(`Product with  ${productId} not found`));
+        }
 
 
 
-        const { stockQuantity} = req.body;
+        const { stockQuantity } = req.body;
 
-        if(stockQuantity === undefined){
+        if (stockQuantity === undefined) {
             return next(createError.BadRequest("Please provide stock quantity"));
         }
 
-        if(isNaN(Number(stockQuantity))){
+        if (isNaN(Number(stockQuantity))) {
             return next(createError.BadRequest("Please provide a valid stock quantity"));
         }
 
-        if(stockQuantity <=0){
+        if (stockQuantity <= 0) {
             return next(createError.BadRequest("Stock quantity should be greater than 0"));
         }
 
@@ -549,26 +583,25 @@ const deleteProduct = async (req, res, next) => {
         }
 
         const deleteQuery = `DELETE FROM "Product" WHERE id = :productId`;
-        const [result, metadata] = await sequelize.query(deleteQuery, {
+        await sequelize.query(deleteQuery, {
             replacements: { productId },
             type: sequelize.QueryTypes.DELETE
         });
-        
+
         console.log("product exists image");
-        
+
         console.log(productExistsResult.image);
-        
+
 
         if (productExistsResult.image) {
-            
+
             const imageDeleteResult = removeProductImage(productExistsResult.image);
             if (imageDeleteResult === false) {
                 return next(createError.InternalServerError("Error deleting image from Supabase or Local"));
             }
         }
 
-        console.log(result);
-        console.log(metadata);
+        
 
         res.send({ message: "Product deleted successfully" });
 
@@ -591,10 +624,20 @@ const searchProduct = async (req, res, next) => {
             return next(createError.BadRequest("Please provide a product name to search"));
         }
 
-        const searchQuery = `
+        let searchQuery =  "";
+
+        if(mode === "production"){
+            searchQuery = `
             SELECT * FROM "Product"
             WHERE "productName" ILIKE :productName
         `;
+        }else{
+            searchQuery = `
+             SELECT * FROM "Product"
+            WHERE LOWER("productName") LIKE LOWER(:productName)
+            `;
+        }
+          
 
         const products = await sequelize.query(searchQuery, {
             replacements: { productName: `%${productName}%` },
@@ -642,11 +685,11 @@ const deleteProductImage = async (req, res, next) => {
             return next(createError.BadRequest("No image found for the given product"));
         }
 
-        
+
 
         const imageDeleteResult = removeProductImage(product.image);
 
-        if(imageDeleteResult === false){
+        if (imageDeleteResult === false) {
             return next(createError.InternalServerError("Error deleting image from Supabase or Local"));
         }
 
@@ -678,7 +721,7 @@ const deleteProductImage = async (req, res, next) => {
 
 const getProductInventory = async (req, res, next) => {
     try {
-        
+
 
         // Query to get the product inventory
         const productQuery = `
@@ -710,18 +753,19 @@ const getProductInventory = async (req, res, next) => {
 
 
 
-module.exports = { createProduct, listAllAvailableProducts, listAllProducts, updateProductImage, updateProduct, deleteProduct, searchProduct, updateProductAvailability, updateProductStockQuantity, getProductById, deleteProductImage, uploadImageToLocalFile, updateProductPrice, getProductInventory};
+module.exports = { createProduct, listAllAvailableProducts, listAllProducts, updateProductImage, updateProduct, deleteProduct, searchProduct, updateProductAvailability, updateProductStockQuantity, getProductById, deleteProductImage, uploadImageToLocalFile, updateProductPrice, getProductInventory };
 
 const removeProductImage = async (image) => {
     try {
         if (mode === "development") {
             console.log("development mode");
-            
+
             console.log(image);
-            
+
             fs.unlinkSync(path.join(__dirname, '..', 'images', image));
             return true;
         } else {
+            const supabase = require("../helpers/supabase_client");
             const imagePath = image.split('/').pop(); // Extract the image path from the URL}
             const { error } = await supabase.storage.from(process.env.SUPABASE_BUCKET_NAME).remove([imagePath]);
 

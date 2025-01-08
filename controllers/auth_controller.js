@@ -2,8 +2,11 @@ const sequelize = require("../helpers/database");
 const JWT = require("../helpers/jwt_helper");
 const createError = require("http-errors");
 
+const mode = process.env.NODE_ENV || "development";
+
+
 const createAuthToken = async (req, res, next) => {
-    try {   
+    try {
         const token = await JWT.signInAuthToken();
         res.send(token);
     } catch (error) {
@@ -29,21 +32,47 @@ const signUp = async (req, res, next) => {
             name = null;
         }
 
+        let userId = 0;
+        if (mode === "production") {
 
-
-
-        const [result, metadata] = await sequelize.query(`
-            INSERT INTO "User" ("name","userName", "password", "isAdmin")
+            const [result, metadata] = await sequelize.query(`
+            INSERT INTO "User" (name,"userName", password, "isAdmin")
             VALUES (:name, :userName, :password, :isAdmin)
             RETURNING id;
            `,
-            {
+                {
+                    replacements: { name, userName, password, isAdmin },
+                },
+            )
+            console.log("result-------------------------------------");
+
+            console.log(result);
+
+            userId = result[0]["id"];
+        } else {
+            // Development mode
+            // Insert the new user into the User table
+            await sequelize.query(`
+            INSERT INTO "User" (name, "userName", password, "isAdmin")
+            VALUES (:name, :userName, :password, :isAdmin);
+        `, {
                 replacements: { name, userName, password, isAdmin },
-            },
-        )
+                type: sequelize.QueryTypes.INSERT
+            });
+
+            // Get the ID of the last inserted row
+            const [result] = await sequelize.query(`
+            SELECT last_insert_rowid() AS id;
+        `, {
+                type: sequelize.QueryTypes.SELECT
+            });
+
+            userId = result.id;
+
+        }
 
 
-        const userId = result[0]["id"];
+
 
         const accessToken = await JWT.signInAccessToken(userId, userName, isAdmin)
 
@@ -55,13 +84,16 @@ const signUp = async (req, res, next) => {
 
 
     } catch (error) {
+        
+
+        console.log(error);
         if (error.name === "SequelizeUniqueConstraintError") {
             return next(createError.BadRequest("Unique constraint error, username is already used"))
         }
         if (error.name === "SequelizeDatabaseError") {
             return next(createError.InternalServerError("Database problem, please contact with developer"))
         }
-        console.log(error);
+
         next(error)
     }
 }
@@ -80,7 +112,7 @@ const signIn = async (req, res, next) => {
 
         const query = `
                 SELECT id, "isAdmin",name
-                FROM public."User" 
+                FROM "User" 
                 WHERE "userName" = :userName AND password = :password
                 `;
 
@@ -125,12 +157,12 @@ const signIn = async (req, res, next) => {
 
 const listAllUsers = async (req, res, next) => {
     try {
-       
+
 
 
         const query = `
                 SELECT *
-                FROM public."User";
+                FROM "User";
                 `;
 
 
@@ -144,6 +176,8 @@ const listAllUsers = async (req, res, next) => {
         res.send(result);
 
     } catch (error) {
+        console.log(error);
+        
         if (error.name === "SequelizeDatabaseError") {
             return next(createError.InternalServerError("Database problem, please contact with developer"))
         }
@@ -156,7 +190,7 @@ const listAllUsers = async (req, res, next) => {
 
 const deleteUser = async (req, res, next) => {
     try {
-        
+
 
         const userIdToDelete = req.params.id;
 
@@ -169,33 +203,35 @@ const deleteUser = async (req, res, next) => {
             type: sequelize.QueryTypes.SELECT
         });
 
-        console.log(userExistsResult);
-        console.log("-----");
-        console.log(userIdToDelete);
-        console.log(userId);
+       
         
-        
-        
-        
+
+
+
+
 
         if (!userExistsResult) {
             return next(createError.BadRequest(`User with id ${userIdToDelete} not found`));
         }
 
-        if (userId != userIdToDelete && userExistsResult["isAdmin"] === true) {
+        if (userExistsResult.id != userIdToDelete && userExistsResult["isAdmin"] === true) {
             return next(createError.Forbidden("Admin users can't delete others admin account"));
         }
 
+        
+        
+
         const query = `DELETE FROM "User" WHERE id = :userIdToDelete`;
 
-        const [result, metadata] = await sequelize.query(query, {
+         await sequelize.query(query, {
             replacements: { userIdToDelete },
             type: sequelize.QueryTypes.DELETE
         },);
+      
+        
 
-
-        console.log(result);
-        console.log(metadata);
+        
+        
 
 
 
@@ -217,14 +253,14 @@ const updateUser = async (req, res, next) => {
     try {
 
 
-        const {userId} = req.payload;
-        
-       
+        const { userId } = req.payload;
+
+
 
         const userIdToUpdate = req.params.id;
 
         console.log("userIdToUpdate", userIdToUpdate);
-        
+
 
         if (isNaN(Number(userIdToUpdate))) return next(createError.BadRequest("User ID should be a number"));
 
@@ -241,9 +277,9 @@ const updateUser = async (req, res, next) => {
         }
 
         console.log(userExistsResult);
-        
 
-        if(userIdToUpdate != userId && userExistsResult["isAdmin"]){
+
+        if (userIdToUpdate != userId && userExistsResult["isAdmin"]) {
             return next(createError.Forbidden("Admin users can't update other admin users"));
         }
 
@@ -292,4 +328,4 @@ const updateUser = async (req, res, next) => {
     }
 }
 
-module.exports = { createAuthToken,signUp, signIn, listAllUsers, deleteUser, updateUser };
+module.exports = { createAuthToken, signUp, signIn, listAllUsers, deleteUser, updateUser };
