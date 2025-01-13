@@ -41,7 +41,7 @@ sequelize.sync({ force: true }).then(
 if(mode === "development"){
   createFolderIfNotExists("images");
   app.use("/images", express.static(path.join(__dirname, "images")));
-
+  app.use("/banner",express.static(path.join(__dirname,"banner")))
 }
 
 

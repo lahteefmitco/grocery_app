@@ -40,7 +40,7 @@ const adminDashBoardForSqlite = async (req, res, next) => {
         );
         console.log(stockOutProductCount.productCount);
 
-        const trendingProducts= await sequelize.query(
+        const trendingProducts = await sequelize.query(
             trendingProductsquery,
             {
                 transaction: t,
@@ -61,18 +61,18 @@ const adminDashBoardForSqlite = async (req, res, next) => {
 
         console.log(allOrders);
 
-        
-        
-        
+
+
+
 
 
         await t.commit();
         res.send({
-            usersCount:userCount.userCount,
-            productCount:productCount.productCount,
+            usersCount: userCount.userCount,
+            productCount: productCount.productCount,
             stockOutProductCount: stockOutProductCount.productCount,
-            trendingProducts:trendingProducts,
-            allOrders:allOrders
+            trendingProducts: trendingProducts,
+            allOrders: allOrders
         });
 
 
@@ -80,10 +80,9 @@ const adminDashBoardForSqlite = async (req, res, next) => {
 
 
     } catch (error) {
+        await t.rollback();
         console.log(error);
-        if (error.name === "SequelizeUniqueConstraintError") {
-            return next(createError.BadRequest("Unique constraint error, username is already used"))
-        }
+        
         if (error.name === "SequelizeDatabaseError") {
             return next(createError.InternalServerError("Database problem, please contact with developer"))
         }
@@ -109,7 +108,7 @@ const adminDashBoardForPostgres = async (req, res, next) => {
                 type: sequelize.QueryTypes.SELECT
             }
         );
-       // console.log(userCount.usercount);
+        // console.log(userCount.usercount);
 
         const [productCount, productCountMetaData] = await sequelize.query(
             productCountQuery,
@@ -118,7 +117,7 @@ const adminDashBoardForPostgres = async (req, res, next) => {
                 type: sequelize.QueryTypes.SELECT
             }
         );
-       // console.log(productCount[0].productCount);
+        // console.log(productCount[0].productCount);
 
         const [stockOutProductCount, stockOutProductCountMetadata] = await sequelize.query(
             stockOutProductCountQuery,
@@ -129,7 +128,7 @@ const adminDashBoardForPostgres = async (req, res, next) => {
         );
         //console.log(stockOutProductCount[0].productCount);
 
-        const trendingProducts= await sequelize.query(
+        const trendingProducts = await sequelize.query(
             trendingProductsquery,
             {
                 transaction: t,
@@ -150,18 +149,18 @@ const adminDashBoardForPostgres = async (req, res, next) => {
 
         console.log(allOrders);
 
-        
-        
-        
+
+
+
 
 
         await t.commit();
         res.send({
-            usersCount:userCount.usercount,
-            productCount:productCount.productcount,
+            usersCount: userCount.usercount,
+            productCount: productCount.productcount,
             stockOutProductCount: stockOutProductCount.productcount,
-            trendingProducts:trendingProducts,
-            allOrders:allOrders
+            trendingProducts: trendingProducts,
+            allOrders: allOrders
         });
 
 
@@ -169,10 +168,9 @@ const adminDashBoardForPostgres = async (req, res, next) => {
 
 
     } catch (error) {
+        await t.rollback();
         console.log(error);
-        if (error.name === "SequelizeUniqueConstraintError") {
-            return next(createError.BadRequest("Unique constraint error, username is already used"))
-        }
+        
         if (error.name === "SequelizeDatabaseError") {
             return next(createError.InternalServerError("Database problem, please contact with developer"))
         }
@@ -181,6 +179,102 @@ const adminDashBoardForPostgres = async (req, res, next) => {
     }
 }
 
+const userDashBoardsqlite = async (req, res, next) => {
+    const t = await sequelize.transaction();
+    try {
+        const userId = req.payload.userId;
+        const banner = "/banner/banner.jpg";
+        const trendingProductsquery = `SELECT * FROM "Product" ORDER BY id ASC LIMIT 10;`;
+        const recentOrdersDescQuery = `SELECT * FROM "Cart" WHERE "userId" = :userId ORDER BY id DESC LIMIT 15`;
 
 
-module.exports = { adminDashBoardForSqlite,adminDashBoardForPostgres }
+        const trendingProducts = await sequelize.query(
+            trendingProductsquery,
+            {
+                transaction: t,
+                type: sequelize.QueryTypes.SELECT
+            }
+        );
+
+        const recentOrders = await sequelize.query(
+            recentOrdersDescQuery,{
+                replacements:{userId},
+                transaction: t,
+                type: sequelize.QueryTypes.SELECT
+            }
+        )
+
+        await t.commit();
+
+        res.send({
+            "banner":banner,
+            trendingProducts,
+            recentOrders
+        })
+
+
+
+    } catch (error) {
+        console.log(error);
+        await t.rollback();
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"))
+        }
+
+        next(error)
+    }
+
+}
+
+const userDashBoardPostgres = async (req, res, next) => {
+    const t = await sequelize.transaction();
+    try {
+        const userId = req.payload.userId;
+        const banner = "https://qscihnogyuzgcmmqmans.supabase.co/storage/v1/object/public/grocery/banner.jpg";
+        const trendingProductsquery = `SELECT * FROM "Product" ORDER BY id ASC LIMIT 10;`;
+        const recentOrdersDescQuery = `SELECT * FROM "Cart" WHERE "userId" = :userId ORDER BY id DESC LIMIT 15`;
+
+
+        const trendingProducts = await sequelize.query(
+            trendingProductsquery,
+            {
+                transaction: t,
+                type: sequelize.QueryTypes.SELECT
+            }
+        );
+
+        const recentOrders = await sequelize.query(
+            recentOrdersDescQuery,{
+                replacements:{userId},
+                transaction: t,
+                type: sequelize.QueryTypes.SELECT
+            }
+        )
+
+        await t.commit();
+
+        res.send({
+            "banner":banner,
+            trendingProducts,
+            recentOrders
+        })
+
+
+
+    } catch (error) {
+        await t.rollback();
+        console.log(error);
+
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"))
+        }
+
+        next(error)
+    }
+
+}
+
+
+
+
+module.exports = { adminDashBoardForSqlite, adminDashBoardForPostgres, userDashBoardsqlite,userDashBoardPostgres}

@@ -2,6 +2,13 @@ const JWT = require("jsonwebtoken");
 const createError = require("http-errors");
 const sequelize = require("./database");
 
+require("dotenv").config();
+
+const mode = process.env.NODE_ENV || "development";
+const authTokenSecret = "aZ9dW4sGp2VtB7eF8jL0uQ1hCw3YkN6oP5mXrA2zK9TnJ8iD0gL7bCqS";
+const accessTokenSecret = "P7rG2vCkL9tY1mF3W0zB8qVjXnD6oT5aU4hKzI2JdM7sE3yLQ1wR9cA";
+
+
 
 
 module.exports = {
@@ -10,7 +17,7 @@ module.exports = {
             const payload = {
                 developer: "Abdul Latheeef"
             };
-            const secret = process.env.AUTH_TOKEN_SECRET;
+            const secret = mode === "production" ? process.env.AUTH_TOKEN_SECRET :authTokenSecret ;
             const option = {
                 expiresIn: "90d",
                 issuer: "oxdotechnologies.com",
@@ -30,7 +37,7 @@ module.exports = {
                 userName: userName,
                 isAdmin: isAdmin
             };
-            const secret = process.env.ACCESS_TOKEN_SECRET;
+            const secret = mode === "production" ? process.env.ACCESS_TOKEN_SECRET: accessTokenSecret;
             const option = {
                 expiresIn: "90d",
                 issuer: "oxdotechnologies.com",
