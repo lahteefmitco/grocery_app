@@ -63,7 +63,9 @@ app.get("/createApiKey", async (req, res, next) => {
 app.use("/api/user", require("./routes/user_routes"));
 app.use("/api/product", require("./routes/product_routes"));
 app.use("/api/cart", require("./routes/cart_routes"));
+app.use("/api/dashboard",require("./routes/dashboard_route"))
 app.use("/api/sample", require("./routes/sample_route"));
+
 
 
 app.use((req, res, next) => {

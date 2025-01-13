@@ -1,6 +1,7 @@
 const sequelize = require("../helpers/database");
 const JWT = require("../helpers/jwt_helper");
 const createError = require("http-errors");
+require("dotenv").config();
 
 const mode = process.env.NODE_ENV || "development";
 
