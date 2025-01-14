@@ -91,7 +91,7 @@ const signUp = async (req, res, next) => {
 
 
 
-       
+
         res.send({ token: accessToken, name, isAdmin, email, phoneNumber, profileImage })
 
 
@@ -154,13 +154,13 @@ const signIn = async (req, res, next) => {
         const profileImage = result["profileImage"];
 
 
-        
+
         const accessToken = await JWT.signInAccessToken(userId, userName, isAdmin)
 
-        if(mode === "development"){
-            if(isAdmin ===1){
+        if (mode === "development") {
+            if (isAdmin === 1) {
                 isAdmin = true
-            }else{
+            } else {
                 isAdmin = false
             }
         }
@@ -194,16 +194,16 @@ const listAllUsers = async (req, res, next) => {
         const [results, metadata] = await sequelize.query(query,);
 
         console.log(results);
-        
+
 
         const updatedUsers = results.map(user => ({
             ...user,
             isAdmin: user.isAdmin === 1 ? true : false
-          }));
-          
-          console.log(updatedUsers);
+        }));
 
-        
+        console.log(updatedUsers);
+
+
 
         res.send(updatedUsers);
 
@@ -351,18 +351,18 @@ const updateUser = async (req, res, next) => {
         WHERE id = :userIdToUpdate
     `;
 
-    
-    
-    
-    
-    
+
+
+
+
+
 
         await sequelize.query(updateQuery, {
             replacements: { userIdToUpdate, name, userName, password, isAdmin, email, phoneNumber, profileImage },
             type: sequelize.QueryTypes.UPDATE
         });
 
-        
+
 
         res.send("User updated successfully");
 
@@ -379,4 +379,155 @@ const updateUser = async (req, res, next) => {
     }
 }
 
-module.exports = { createAuthToken, signUp, signIn, listAllUsers, deleteUser, updateUser };
+const addImageToLocal = async (req, res, next) => {
+    try {
+        if (!req.file) {
+
+            return next(createError("No file is uploaded"))
+        }
+
+        const id = req.params.id;
+
+        if (isNaN(Number(id))) return next(createError.BadRequest("User ID should be a number"));
+
+        const profileImage = req.file.filename;
+
+        const updateImageQuery = `UPDATE "User" 
+        SET "profileImage" = :profileImage 
+        WHERE id = :id`;
+
+        await sequelize.query(updateImageQuery, {
+            replacements: { profileImage, id },
+            type: sequelize.QueryTypes.UPDATE
+        })
+
+
+
+        res.send(`Uploaded image to userName ${req.userName}`)
+
+
+
+    } catch (error) {
+        if (error.name === "SequelizeUniqueConstraintError") {
+            return next(createError.BadRequest("Unique constraint error, username is already used"))
+        }
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"))
+        }
+
+        console.log(error);
+        next(error)
+    }
+}
+
+
+const addImageToRemote = async (req, res, next) => {
+    try {
+        if (!req.file) {
+
+            return next(createError("No file is uploaded"))
+        }
+
+        const supabase = require("../helpers/supabase_client");
+        const { id } = req.params;
+
+        if (isNaN(Number(id))) {
+            return next(createError.BadRequest("Please provide a valid user id"));
+        }
+
+        // Check if the product exists
+        const userQuery = `SELECT * FROM "User" WHERE id = :id`;
+        const [user] = await sequelize.query(userQuery, {
+            replacements: { id },
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        console.log(user);
+
+
+
+
+        if (!user) {
+            return next(createError.NotFound(`User not found with the given id ${id}`));
+        }
+
+
+        
+
+        console.log(req.file.originalname);
+
+        const fileName = `${Date.now()}_${req.file.originalname}`;
+       
+        
+
+        // Delete existing image from Supabase if it exists
+        if (user.profileImage) {
+           
+            
+         
+            
+            const imagePath = user.profileImage.split('/').pop(); 
+            console.log("---");
+            
+            console.log(imagePath);
+            // Extract the image path from the URL
+            const { error: deleteError } = await supabase.storage.from(process.env.SUPABASE_BUCKET_NAME).remove([imagePath]);
+
+            if (deleteError) {
+                console.error('Error deleting image from Supabase:', deleteError);
+                return next(createError.InternalServerError('Error deleting existing image'));
+            }
+        }// Generate a unique filename
+
+        console.log("Supabase");
+
+        const file = req.file;
+        
+
+        // Upload the file buffer directly to Supabase
+        const { data, error } = await supabase.storage
+            .from(process.env.SUPABASE_BUCKET_NAME)
+            .upload(fileName, file.buffer, {
+                contentType: file.mimetype,
+                upsert: false, // Set to true if you want to overwrite files with the same name
+            });
+
+        if (error) throw error;
+
+        console.log("passed");
+        
+
+
+        const image = `${process.env.SUPABASE_URL}/storage/v1/object/public/${process.env.SUPABASE_BUCKET_NAME}/${fileName}`;
+
+        await sequelize.query(`
+            UPDATE "User"
+            SET "profileImage" = :image
+            WHERE id = :id;
+        `,
+            {
+                replacements: { image, id },
+                type:sequelize.QueryTypes.UPDATE
+            });
+
+        console.log(image);
+
+
+        res.send({ message: `User image updated successfully`, image });
+
+
+
+    } catch (error) {
+        if (error.name === "SequelizeUniqueConstraintError") {
+            return next(createError.BadRequest("Unique constraint error, username is already used"))
+        }
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"))
+        }
+
+        console.log(error);
+        next(error)
+    }
+}
+
+module.exports = { createAuthToken, signUp, signIn, listAllUsers, deleteUser, updateUser, addImageToLocal,addImageToRemote };
