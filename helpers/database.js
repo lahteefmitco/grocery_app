@@ -48,6 +48,9 @@ const sequelize = mode == "production" ? new Sequelize(database, user, password,
         name VARCHAR(255) DEFAULT NULL,
         "userName" VARCHAR(255) NOT NULL UNIQUE, 
         password VARCHAR(255) NOT NULL, 
+        email VARCHAR(255) DEFAULT NULL,
+        "phoneNumber" VARCHAR(16) DEFAULT NULL,
+        "profileImage" VARCHAR(255) DEFAULT NULL,
         "isAdmin" BOOLEAN DEFAULT TRUE
       );
     `);
@@ -74,6 +77,7 @@ const sequelize = mode == "production" ? new Sequelize(database, user, password,
         "dateTime" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP UNIQUE, 
         "totalItems" FLOAT NOT NULL DEFAULT 0.0, 
         "totalAmount" DECIMAL NOT NULL, 
+        acknowledged BOOLEAN DEFAULT FALSE,
         "userId" INTEGER REFERENCES "User"(id) 
           ON DELETE SET NULL 
           ON UPDATE CASCADE
@@ -113,6 +117,9 @@ const sequelize = mode == "production" ? new Sequelize(database, user, password,
         name VARCHAR(255) DEFAULT NULL,
         "userName" VARCHAR(255) NOT NULL UNIQUE, 
         password VARCHAR(255) NOT NULL, 
+         email VARCHAR(255) DEFAULT NULL,
+        "phoneNumber" VARCHAR(16) DEFAULT NULL,
+        "profileImage" VARCHAR(255) DEFAULT NULL,
         "isAdmin" INTEGER DEFAULT 1
       );
     `);
@@ -139,6 +146,7 @@ const sequelize = mode == "production" ? new Sequelize(database, user, password,
       "dateTime" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP UNIQUE,
       "totalItems" FLOAT NOT NULL DEFAULT 0.0,
       "totalAmount" DECIMAL NOT NULL,
+      acknowledged INTEGER DEFAULT 0,
       "userId" INTEGER REFERENCES "User"(id)
         ON DELETE SET NULL
         ON UPDATE CASCADE

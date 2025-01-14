@@ -13,15 +13,15 @@ const mode = process.env.NODE_ENV || "development";
 const createFolderIfNotExists = (folderName) => {
   const folderPath = path.join(__dirname, folderName);
   if (!fs.existsSync(folderPath)) {
-      fs.mkdir(folderPath, { recursive: true }, (err) => {
-          if (err) {
-              console.error(`Error creating folder "${folderName}":`, err);
-          } else {
-              console.log(`Folder "${folderName}" created successfully.`);
-          }
-      });
+    fs.mkdir(folderPath, { recursive: true }, (err) => {
+      if (err) {
+        console.error(`Error creating folder "${folderName}":`, err);
+      } else {
+        console.log(`Folder "${folderName}" created successfully.`);
+      }
+    });
   } else {
-      console.log(`Folder "${folderName}" already exists.`);
+    console.log(`Folder "${folderName}" already exists.`);
   }
 };
 
@@ -38,10 +38,10 @@ sequelize.sync({ force: true }).then(
   }
 );
 
-if(mode === "development"){
+if (mode === "development") {
   createFolderIfNotExists("images");
   app.use("/images", express.static(path.join(__dirname, "images")));
-  app.use("/banner",express.static(path.join(__dirname,"banner")))
+  app.use("/banner", express.static(path.join(__dirname, "banner")))
 }
 
 
@@ -62,8 +62,8 @@ app.get("/createApiKey", async (req, res, next) => {
 
 app.use("/api/user", require("./routes/user_routes"));
 app.use("/api/product", require("./routes/product_routes"));
-app.use("/api/cart", require("./routes/cart_routes"));
-app.use("/api/dashboard",require("./routes/dashboard_route"))
+app.use("/api/order", require("./routes/cart_routes"));
+app.use("/api/dashboard", require("./routes/dashboard_route"))
 app.use("/api/sample", require("./routes/sample_route"));
 
 

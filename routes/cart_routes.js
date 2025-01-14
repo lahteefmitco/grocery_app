@@ -5,15 +5,15 @@ const AdminVerification = require("../helpers/verify_admin");
 
 
 router.get("/sampleQuery",CartController.sampleQuery);
-router.post("/addToCart", JWT.verifyAccessToken, CartController.addToCart);
-router.post("/addToCart2", JWT.verifyAccessToken, CartController.addToCart2);
-router.get("/listAllCarts", JWT.verifyAccessToken, AdminVerification.verifyAdmin, CartController.listAllCarts);
-router.get("/getACart/:cartId", JWT.verifyAccessToken, CartController.getCartById);
-router.get("/listAllCartsByUser/:userId", JWT.verifyAccessToken, CartController.getCartsByUserId);
-router.get("/searchCartsInBetweenDates", JWT.verifyAccessToken, CartController.searchCartsBetweenDates);
+router.post("/placeAnOrder", JWT.verifyAccessToken, CartController.addToCart);
 
-router.put("/updateACart/:cartId", JWT.verifyAccessToken, CartController.updateCartWithProducts);
-router.delete("/deleteACart/:cartId", JWT.verifyAccessToken, CartController.deleteCartWithProducts);
+router.get("/listAllOrders", JWT.verifyAccessToken, AdminVerification.verifyAdmin, CartController.listAllCarts);
+router.get("/getAnOrder/:cartId", JWT.verifyAccessToken, CartController.getCartById);
+router.get("/listAllOrdersByUser/:userId", JWT.verifyAccessToken, CartController.getCartsByUserId);
+router.get("/searchOrdersInBetweenDates", JWT.verifyAccessToken, CartController.searchCartsBetweenDates);
+
+router.put("/updateAnOrder/:cartId", JWT.verifyAccessToken, CartController.updateCartWithProducts);
+router.delete("/deleteAnOrder/:cartId", JWT.verifyAccessToken, CartController.deleteCartWithProducts);
 
 
 

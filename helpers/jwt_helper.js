@@ -5,8 +5,8 @@ const sequelize = require("./database");
 require("dotenv").config();
 
 const mode = process.env.NODE_ENV || "development";
-const authTokenSecret = "aZ9dW4sGp2VtB7eF8jL0uQ1hCw3YkN6oP5mXrA2zK9TnJ8iD0gL7bCqS";
-const accessTokenSecret = "P7rG2vCkL9tY1mF3W0zB8qVjXnD6oT5aU4hKzI2JdM7sE3yLQ1wR9cA";
+const authTokenSecret = mode == "production" ? process.env.AUTH_TOKEN_SECRET : "aZ9dW4sGp2VtB7eF8jL0uQ1hCw3YkN6oP5mXrA2zK9TnJ8iD0gL7bCqS";
+const accessTokenSecret = mode == "production" ? process.env.ACCESS_TOKEN_SECRET : "P7rG2vCkL9tY1mF3W0zB8qVjXnD6oT5aU4hKzI2JdM7sE3yLQ1wR9cA";
 
 
 
@@ -17,7 +17,7 @@ module.exports = {
             const payload = {
                 developer: "Abdul Latheeef"
             };
-            const secret = mode === "production" ? process.env.AUTH_TOKEN_SECRET :authTokenSecret ;
+            const secret = authTokenSecret;
             const option = {
                 expiresIn: "90d",
                 issuer: "oxdotechnologies.com",
@@ -37,7 +37,7 @@ module.exports = {
                 userName: userName,
                 isAdmin: isAdmin
             };
-            const secret = mode === "production" ? process.env.ACCESS_TOKEN_SECRET: accessTokenSecret;
+            const secret = accessTokenSecret;
             const option = {
                 expiresIn: "90d",
                 issuer: "oxdotechnologies.com",
@@ -53,36 +53,47 @@ module.exports = {
 
     },
     verifyAuthToken: (req, res, next) => {
-        const authHeader = req.headers["authorization"];
-        if (!authHeader) return next(createError.Unauthorized());
-        const bearerToken = authHeader.split(" ");
-        const token = bearerToken[1];
+        try {
+            
+            const authHeader = req.headers["authorization"];
+            if (!authHeader) return next(createError.Unauthorized());
+            const bearerToken = authHeader.split(" ");
+            const token = bearerToken[1];
+          
+            
+            JWT.verify(token, authTokenSecret, (err, payload) => {
+                if (err) {
+                    if (err.name === "JsonWebTokenError") {
+                        console.log(`auth token error ${err}`);
 
-        JWT.verify(token, process.env.AUTH_TOKEN_SECRET, (err, payload) => {
-            if (err) {
-                if (err.name === "JsonWebTokenError") {
-                    return next(createError.Unauthorized("UnAuthorized"));
-                } else if (err.name == "TokenExpiredError") {
-                    return next(createError.Unauthorized("TokenExpiredError"))
+                        return next(createError.Unauthorized("UnAuthorized"));
+                    } else if (err.name == "TokenExpiredError") {
+                        return next(createError.Unauthorized("TokenExpiredError"))
+                    }
+                    else {
+                        return next(createError.Unauthorized("Token is not verified"))
+                    }
                 }
-                else {
-                    return next(createError.Unauthorized("Token is not verified"))
-                }
-            }
-            console.log(payload);
-            next();
-        });
+                
+                
+                next();
+            });
+        } catch (error) {
+            console.log(`Auth error ${error}`);
+
+            next(createError.InternalServerError(`Un expected key:- ${error}`))
+        }
     },
     verifyAccessToken: (req, res, next) => {
-        console.log("Entered-------------");
         
+
         try {
             const authHeader = req.headers["authorization"];
             if (!authHeader) return next(createError.Unauthorized());
             const bearerToken = authHeader.split(" ");
             const token = bearerToken[1];
 
-            JWT.verify(token, process.env.ACCESS_TOKEN_SECRET, async (err, payload) => {
+            JWT.verify(token, accessTokenSecret, async (err, payload) => {
                 if (err) {
                     console.log(err.name);
                     if (err.name === "JsonWebTokenError") {
@@ -91,8 +102,8 @@ module.exports = {
                         return next(createError.Unauthorized("TokenExpiredError"))
                     }
                     else {
-                        console.log(`Error ${err}`);
                         
+
                         return next(createError.Unauthorized("Token is not verified"))
                     }
                 }
@@ -105,7 +116,7 @@ module.exports = {
                     },
                 )
 
-                console.log(result);
+                
 
                 if (!result) return next(createError.Unauthorized("Token for the user deleted"));
                 req.payload = payload;
@@ -114,7 +125,7 @@ module.exports = {
             );
         } catch (error) {
             console.log(`Auth error ${error}`);
-            
+
             next(createError.InternalServerError(`Un expected key:- ${error}`))
         }
 

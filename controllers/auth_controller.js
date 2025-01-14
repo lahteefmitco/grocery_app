@@ -20,7 +20,7 @@ const createAuthToken = async (req, res, next) => {
 const signUp = async (req, res, next) => {
     try {
 
-        var { name, userName, password, isAdmin } = req.body;
+        var { name, userName, password, isAdmin, email, phoneNumber, profileImage } = req.body;
 
 
         if (!userName || !password) return next(createError.BadRequest("No username or password"));
@@ -33,16 +33,28 @@ const signUp = async (req, res, next) => {
             name = null;
         }
 
+        if (email == undefined) {
+            email = null;
+        }
+
+        if (phoneNumber == undefined) {
+            phoneNumber = null;
+        }
+
+        if (profileImage == undefined) {
+            profileImage = null;
+        }
+
         let userId = 0;
         if (mode === "production") {
 
             const [result, metadata] = await sequelize.query(`
-            INSERT INTO "User" (name,"userName", password, "isAdmin")
-            VALUES (:name, :userName, :password, :isAdmin)
+            INSERT INTO "User" (name,"userName", password, "isAdmin",email,"phoneNumber","profileImage")
+            VALUES (:name, :userName, :password, :isAdmin, :email, :phoneNumber, :profileImage)
             RETURNING id;
            `,
                 {
-                    replacements: { name, userName, password, isAdmin },
+                    replacements: { name, userName, password, isAdmin, email, phoneNumber, profileImage },
                 },
             )
             console.log("result-------------------------------------");
@@ -54,10 +66,10 @@ const signUp = async (req, res, next) => {
             // Development mode
             // Insert the new user into the User table
             await sequelize.query(`
-            INSERT INTO "User" (name, "userName", password, "isAdmin")
-            VALUES (:name, :userName, :password, :isAdmin);
+            INSERT INTO "User" (name, "userName", password, "isAdmin",email,"phoneNumber","profileImage")
+            VALUES (:name, :userName, :password, :isAdmin, :email, :phoneNumber, :profileImage);
         `, {
-                replacements: { name, userName, password, isAdmin },
+                replacements: { name, userName, password, isAdmin, email, phoneNumber, profileImage },
                 type: sequelize.QueryTypes.INSERT
             });
 
@@ -79,13 +91,13 @@ const signUp = async (req, res, next) => {
 
 
 
-
-        res.send({ token: accessToken, name, isAdmin })
+       
+        res.send({ token: accessToken, name, isAdmin, email, phoneNumber, profileImage })
 
 
 
     } catch (error) {
-        
+
 
         console.log(error);
         if (error.name === "SequelizeUniqueConstraintError") {
@@ -102,6 +114,7 @@ const signUp = async (req, res, next) => {
 const signIn = async (req, res, next) => {
     try {
 
+
         var { userName, password } = req.body;
 
 
@@ -112,7 +125,7 @@ const signIn = async (req, res, next) => {
 
 
         const query = `
-                SELECT id, "isAdmin",name
+                SELECT id, "isAdmin",name, email, "phoneNumber", "profileImage"
                 FROM "User" 
                 WHERE "userName" = :userName AND password = :password
                 `;
@@ -133,16 +146,27 @@ const signIn = async (req, res, next) => {
 
 
         const userId = result["id"];
-        const isAdmin = result["isAdmin"];
+        var isAdmin = result["isAdmin"];
         const name = result["name"];
 
+        const email = result["email"];
+        const phoneNumber = result["phoneNumber"];
+        const profileImage = result["profileImage"];
 
+
+        
         const accessToken = await JWT.signInAccessToken(userId, userName, isAdmin)
 
+        if(mode === "development"){
+            if(isAdmin ===1){
+                isAdmin = true
+            }else{
+                isAdmin = false
+            }
+        }
 
 
-
-        res.send({ token: accessToken, name, isAdmin })
+        res.send({ token: accessToken, name, isAdmin, email, phoneNumber, profileImage })
 
 
 
@@ -167,18 +191,25 @@ const listAllUsers = async (req, res, next) => {
                 `;
 
 
-        const [result, metadata] = await sequelize.query(query,);
+        const [results, metadata] = await sequelize.query(query,);
 
-        console.log(result);
-        console.log("metadata");
+        console.log(results);
+        
 
-        console.log(metadata);
+        const updatedUsers = results.map(user => ({
+            ...user,
+            isAdmin: user.isAdmin === 1 ? true : false
+          }));
+          
+          console.log(updatedUsers);
 
-        res.send(result);
+        
+
+        res.send(updatedUsers);
 
     } catch (error) {
         console.log(error);
-        
+
         if (error.name === "SequelizeDatabaseError") {
             return next(createError.InternalServerError("Database problem, please contact with developer"))
         }
@@ -204,8 +235,8 @@ const deleteUser = async (req, res, next) => {
             type: sequelize.QueryTypes.SELECT
         });
 
-       
-        
+
+
 
 
 
@@ -219,26 +250,26 @@ const deleteUser = async (req, res, next) => {
             return next(createError.Forbidden("Admin users can't delete others admin account"));
         }
 
-        
-        
+
+
 
         const query = `DELETE FROM "User" WHERE id = :userIdToDelete`;
 
-         await sequelize.query(query, {
+        await sequelize.query(query, {
             replacements: { userIdToDelete },
             type: sequelize.QueryTypes.DELETE
         },);
-      
-        
-
-        
-        
 
 
 
 
 
-        res.send("Deleted");
+
+
+
+
+
+        res.send("Deleted user");
 
     } catch (error) {
         if (error.name === "SequelizeDatabaseError") {
@@ -284,7 +315,7 @@ const updateUser = async (req, res, next) => {
             return next(createError.Forbidden("Admin users can't update other admin users"));
         }
 
-        const { name, userName, password, isAdmin } = req.body;
+        let { name, userName, password, isAdmin, email, phoneNumber, profileImage } = req.body;
 
         if (!userName || !password) return next(createError.BadRequest("No userName or password"));
         if (userName.length < 4) return next(createError.BadRequest("Username length is less than 4"));
@@ -296,23 +327,42 @@ const updateUser = async (req, res, next) => {
             name = null;
         }
 
+        if (email == undefined) {
+            email = null;
+        }
+
+        if (phoneNumber == undefined) {
+            phoneNumber = null;
+        }
+
+        if (profileImage == undefined) {
+            profileImage = null;
+        }
+
         const updateQuery = `
         UPDATE "User"
         SET name = :name,
             "userName" = :userName,
             password = :password,
-            "isAdmin" = :isAdmin
+            "isAdmin" = :isAdmin,
+            email = :email,
+            "phoneNumber" = :phoneNumber,
+            "profileImage" = :profileImage
         WHERE id = :userIdToUpdate
     `;
 
-        const [result, metadata] = await sequelize.query(updateQuery, {
-            replacements: { userIdToUpdate, name, userName, password, isAdmin },
+    
+    
+    
+    
+    
+
+        await sequelize.query(updateQuery, {
+            replacements: { userIdToUpdate, name, userName, password, isAdmin, email, phoneNumber, profileImage },
             type: sequelize.QueryTypes.UPDATE
         });
 
-        if (metadata.rowCount === 0) {
-            return next(createError.NotFound(`User with id ${userIdToUpdate} not found`));
-        }
+        
 
         res.send("User updated successfully");
 

@@ -11,7 +11,7 @@ const addToCart = async (req, res, next) => {
         const { dateTime, totalItems, totalAmount, productList } = receivedData;
 
         if (!dateTime || !totalItems || !totalAmount || !productList) return next(createError.BadRequest("Missing required fields"));
-        if (productList.length === 0) return next(createError.BadRequest("No products in the cart"));
+        if (productList.length === 0) return next(createError.BadRequest("No products in the order"));
 
         if (totalItems === 0) return next(createError.BadRequest("Total items should be greater than 0"));
 
@@ -189,7 +189,7 @@ const addToCart = async (req, res, next) => {
             return next(createError.InternalServerError("Database problem, please contact with developer"));
         }
 
-        return next(createError.BadRequest(`Error in adding to cart ${error.message}`));
+        return next(createError.BadRequest(`Error in placing this order ${error.message}`));
     }
 }
 
@@ -238,8 +238,8 @@ const getCartById = async (req, res, next) => {
 
 
 
-        if (cartId === undefined) return next(createError.BadRequest("Cart ID is required"));
-        if (isNaN(Number(cartId))) return next(createError.BadRequest("Cart ID should be a number"));
+        if (cartId === undefined) return next(createError.BadRequest("Order ID is required"));
+        if (isNaN(Number(cartId))) return next(createError.BadRequest("Order ID should be a number"));
 
         // Query to get the cart details
         const cartQuery = `SELECT * FROM "Cart" WHERE id = :cartId`;
@@ -249,7 +249,7 @@ const getCartById = async (req, res, next) => {
         });
 
         if (!cart) {
-            return next(createError.NotFound("Cart not found"));
+            return next(createError.NotFound("Order not found"));
         }
 
 
@@ -289,7 +289,7 @@ const getCartById = async (req, res, next) => {
             };
         });
 
-        res.send({ cart, products: productDetails });
+        res.send({ order: cart, products: productDetails });
 
     } catch (error) {
         console.log(error);
@@ -297,7 +297,7 @@ const getCartById = async (req, res, next) => {
             return next(createError.InternalServerError("Database problem, please contact with developer"));
         }
 
-        next(createError.InternalServerError(`Error in getting cart: ${error.message}`));
+        next(createError.InternalServerError(`Error in getting Order: ${error.message}`));
     }
 }
 
@@ -330,7 +330,7 @@ const listAllCarts = async (req, res, next) => {
             return next(createError.InternalServerError("Database problem, please contact with developer"));
         }
 
-        next(createError.InternalServerError(`Error in listing carts: ${error.message}`));
+        next(createError.InternalServerError(`Error in listing Orders: ${error.message}`));
     }
 }
 
@@ -349,7 +349,7 @@ const getCartsByUserId = async (req, res, next) => {
         });
 
         if (carts.length === 0) {
-            return next(createError.NotFound("No carts found for this user"));
+            return next(createError.NotFound("No orders found for this user"));
         }
 
         carts.forEach(cart => {
@@ -366,7 +366,7 @@ const getCartsByUserId = async (req, res, next) => {
             return next(createError.InternalServerError("Database problem, please contact with developer"));
         }
 
-        next(createError.InternalServerError(`Error in getting carts: ${error.message}`));
+        next(createError.InternalServerError(`Error in getting orders: ${error.message}`));
     }
 }
 
@@ -413,7 +413,7 @@ const searchCartsBetweenDates = async (req, res, next) => {
             return next(createError.InternalServerError("Database problem, please contact with developer"));
         }
 
-        next(createError.InternalServerError(`Error in searching carts: ${error.message}`));
+        next(createError.InternalServerError(`Error in searching orders: ${error.message}`));
     }
 }
 
@@ -422,8 +422,8 @@ const updateCartWithProducts = async (req, res, next) => {
     try {
         const { cartId } = req.params;
 
-        if (cartId === undefined) return next(createError.BadRequest("Cart ID is required"));
-        if (isNaN(Number(cartId))) return next(createError.BadRequest("Cart ID should be a number"));
+        if (cartId === undefined) return next(createError.BadRequest("Order ID is required"));
+        if (isNaN(Number(cartId))) return next(createError.BadRequest("Order ID should be a number"));
 
         // Check for existing cart
         const existingCartQuery = `
@@ -443,7 +443,7 @@ const updateCartWithProducts = async (req, res, next) => {
 
         if (!existingCart) {
             t.rollback();
-            return next(createError.BadRequest(`No Cart with ths id ${cartId}`))
+            return next(createError.BadRequest(`No Order with ths id ${cartId}`))
 
         }
 
@@ -455,7 +455,7 @@ const updateCartWithProducts = async (req, res, next) => {
         const { dateTime, totalItems, totalAmount, productList } = req.body;
 
         if (!dateTime || !totalItems || !totalAmount || !productList) return next(createError.BadRequest("Missing required fields"));
-        if (productList.length === 0) return next(createError.BadRequest("No products in the cart"));
+        if (productList.length === 0) return next(createError.BadRequest("No products in the order"));
         if (totalItems === 0) return next(createError.BadRequest("Total items should be greater than 0"));
 
 
@@ -489,6 +489,9 @@ const updateCartWithProducts = async (req, res, next) => {
                 return next(createError.BadRequest(`Product with name ${productName} is not found`));
             }
 
+
+
+
             const getExistingProductsStockInCartQuery = `
                 SELECT  quantity
                 FROM "CartProductJunctionTable"
@@ -501,15 +504,19 @@ const updateCartWithProducts = async (req, res, next) => {
                     transaction: t
                 }
             )
+            if (existingStockOfProductInCart) {
 
-            console.log(`Existing stock of product ${existingStockOfProductInCart.quantity}`);
-
-            const newStockQuantity = product.stockQuantity + existingStockOfProductInCart.quantity;
+                console.log(`Existing stock of product ${existingStockOfProductInCart.quantity}`);
 
 
-            if (newStockQuantity < quantity) {
-                await t.rollback();
-                return next(createError.Forbidden(`Insufficient stock for product ${productName}`));
+
+                const newStockQuantity = product.stockQuantity + existingStockOfProductInCart.quantity;
+
+
+                if (newStockQuantity < quantity) {
+                    await t.rollback();
+                    return next(createError.Forbidden(`Insufficient stock for product ${productName}`));
+                }
             }
 
             calculatedTotalItems += 1;
@@ -679,7 +686,7 @@ const updateCartWithProducts = async (req, res, next) => {
         }
 
         await t.commit();
-        res.send("Cart and products updated successfully");
+        res.send("Order and products updated successfully");
 
     } catch (error) {
         await t.rollback();
@@ -688,7 +695,7 @@ const updateCartWithProducts = async (req, res, next) => {
             return next(createError.InternalServerError("Database problem, please contact with developer"));
         }
 
-        next(createError.InternalServerError(`Error in updating cart: ${error.message}`));
+        next(createError.InternalServerError(`Error in updating order: ${error.message}`));
     }
 }
 
@@ -701,7 +708,7 @@ const deleteCartWithProducts = async (req, res, next) => {
     try {
         const { cartId } = req.params;
 
-        if (isNaN(Number(cartId))) return next(createError.BadRequest("Cart ID should be a number"));
+        if (isNaN(Number(cartId))) return next(createError.BadRequest("Order ID should be a number"));
 
         // Check for existing cart
         const existingCartQuery = `
@@ -721,7 +728,7 @@ const deleteCartWithProducts = async (req, res, next) => {
 
         if (!existingCart) {
             t.rollback();
-            return next(createError.BadRequest(`No Cart with ths id ${cartId}`))
+            return next(createError.BadRequest(`No Order with ths id ${cartId}`))
 
         }
 
@@ -741,7 +748,7 @@ const deleteCartWithProducts = async (req, res, next) => {
         console.log(products);
         if (products.length === 0) {
             await t.rollback();
-            return next(createError.NotFound("No cart with this id or No products found for this cart"));
+            return next(createError.NotFound("No Order with this id or No products found for this cart"));
         }
 
 
@@ -796,15 +803,15 @@ const deleteCartWithProducts = async (req, res, next) => {
             transaction: t
         });
 
-        
 
 
 
-        console.log("Cart and associated products deleted successfully");
+
+        console.log("Order and associated products deleted successfully");
 
 
         await t.commit();
-        res.send("Cart and associated products deleted successfully");
+        res.send("Order and associated products deleted successfully");
 
     } catch (error) {
         await t.rollback();
@@ -813,7 +820,7 @@ const deleteCartWithProducts = async (req, res, next) => {
             return next(createError.InternalServerError("Database problem, please contact with developer"));
         }
 
-        next(createError.InternalServerError(`Error in deleting cart: ${error.message}`));
+        next(createError.InternalServerError(`Error in deleting Order: ${error.message}`));
     }
 }
 
