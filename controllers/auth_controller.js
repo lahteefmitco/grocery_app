@@ -34,7 +34,7 @@ const signUp = async (req, res, next) => {
         }
 
         if (email == undefined) {
-            email = null;
+            return next(createError.BadRequest("Email is required"));
         }
 
         if (phoneNumber == undefined) {
@@ -301,7 +301,7 @@ const updateUser = async (req, res, next) => {
         console.log(userExistsResult);
 
 
-        if (userIdToUpdate != userId ) {
+        if (userIdToUpdate != userId) {
             return next(createError.Forbidden("users can't update other  users"));
         }
 
@@ -318,7 +318,7 @@ const updateUser = async (req, res, next) => {
         }
 
         if (email == undefined) {
-            email = null;
+            return next(createError.BadRequest("Email is required"));
         }
 
         if (phoneNumber == undefined) {
@@ -340,8 +340,6 @@ const updateUser = async (req, res, next) => {
             "profileImage" = :profileImage
         WHERE id = :userIdToUpdate
     `;
-
-
 
 
         await sequelize.query(updateQuery, {
