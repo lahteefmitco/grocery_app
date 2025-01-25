@@ -849,13 +849,56 @@ const sampleQuery = async (req, res, next) => {
     }
 }
 
+const aknowledgeCartRemote = async (req, res, next) => {
+    try {
+        const { cartId, acknowledge } = req.params;
+        if (isNaN(Number(cartId))) return next(createError.BadRequest("Cart ID should be a number"));
+
+        if (acknowledge === undefined) return next(createError.BadRequest("Acknowledge field is required"));
+        if (acknowledge !== "true" && acknowledge !== "false") return next(createError.BadRequest("Acknowledge field should be either true or false"));
+
+
+        let acknowledgeCartQuery = ``;
+        if (acknowledge === "true") {
+
+
+            acknowledgeCartQuery = `
+            UPDATE "Cart"
+            SET acknowledged = true
+            WHERE id = :cartId
+        `;
+        } else {
+
+            acknowledgeCartQuery = `UPDATE "Cart"
+            SET acknowledged = false
+            WHERE id = :cartId`;
+
+        }
+
+        await sequelize.query(acknowledgeCartQuery, {
+            replacements: { cartId },
+            type: sequelize.QueryTypes.UPDATE
+        });
+
+        res.send("Cart acknowledged successfully");
+
+    } catch (error) {
+        console.log(error);
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"));
+        }
+
+        next(createError.InternalServerError(`Error in acknowledging cart: ${error.message}`));
+    }
+}
 
 
 
 
 
 
-module.exports = { addToCart, addToCart2, listAllCarts, getCartById, getCartsByUserId, updateCartWithProducts, deleteCartWithProducts, searchCartsBetweenDates, sampleQuery };
+
+module.exports = { aknowledgeCartRemote, addToCart, addToCart2, listAllCarts, getCartById, getCartsByUserId, updateCartWithProducts, deleteCartWithProducts, searchCartsBetweenDates, sampleQuery };
 
 
 

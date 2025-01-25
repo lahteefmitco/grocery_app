@@ -17,7 +17,7 @@ const storage = multer.diskStorage({
     },
     filename: function (req, file, cb) {
         const productName = req.params.productName;
-        if(!productName){
+        if (!productName) {
             return cb(new Error("Product Name is required"));
         }
         const extension = path.extname(file.originalname);
@@ -37,9 +37,13 @@ const upload = multer({ storage: mode === "development" ? storage : multer.memor
 
 
 
-router.post("/createProduct", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.createProduct);
+router.post("/createProduct", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.createProductForRemote);
 
-router.get("/listAllProducts", JWT.verifyAccessToken, ProductController.listAllProducts);
+//router.post("/createProduct2",  ProductController.createProductForRemote);
+
+router.get("/listAllProductsUnderACategory/:categoryId", JWT.verifyAccessToken, ProductController.getProductUnderACategoryForRemote);
+
+router.get("/listAllProducts", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.listAllProductsRemote);
 
 router.get("/getAProduct/:productId", JWT.verifyAccessToken, ProductController.getProductById);
 
@@ -49,17 +53,17 @@ router.get("/listAllAvailableProducts", JWT.verifyAccessToken, ProductController
 
 router.get("/getProductInventory", JWT.verifyAccessToken, ProductController.getProductInventory);
 
-router.put("/updateAProduct/:productId", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.updateProduct);
+router.put("/updateAProduct/:productId", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.updateProductRemote);
 
-router.delete("/deleteAProduct/:productId", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.deleteProduct);
+router.delete("/deleteAProduct/:productId", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.deleteProductRemote);
 
-router.patch("/updateProductImage/:productId/:productName", JWT.verifyAccessToken, AdminVerification.verifyAdmin, upload.single('image'), mode === "development" ? ProductController.uploadImageToLocalFile :  ProductController.updateProductImage);
+router.patch("/updateProductImage/:productId/:productName", JWT.verifyAccessToken, AdminVerification.verifyAdmin, upload.single('image'), mode === "development" ? ProductController.uploadImageToLocalFile : ProductController.updateProductImage);
 
 router.patch("/updateProductStock/:productId", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.updateProductStockQuantity);
 
 router.patch("/updateProductPrice/:productId", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.updateProductPrice);
 
-router.patch("/updateProductAvailability/:productId", JWT.verifyAccessToken,AdminVerification.verifyAdmin, ProductController.updateProductAvailability);
+router.patch("/updateProductAvailability/:productId", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.updateProductAvailability);
 
 router.delete("/deleteProductImage/:productId", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.deleteProductImage);
 

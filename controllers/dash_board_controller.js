@@ -1,6 +1,7 @@
 const sequelize = require("../helpers/database");
 const JWT = require("../helpers/jwt_helper");
 const createError = require("http-errors");
+require("dotenv").config();
 
 const mode = process.env.NODE_ENV || "development";
 
@@ -82,7 +83,7 @@ const adminDashBoardForSqlite = async (req, res, next) => {
     } catch (error) {
         await t.rollback();
         console.log(error);
-        
+
         if (error.name === "SequelizeDatabaseError") {
             return next(createError.InternalServerError("Database problem, please contact with developer"))
         }
@@ -170,7 +171,7 @@ const adminDashBoardForPostgres = async (req, res, next) => {
     } catch (error) {
         await t.rollback();
         console.log(error);
-        
+
         if (error.name === "SequelizeDatabaseError") {
             return next(createError.InternalServerError("Database problem, please contact with developer"))
         }
@@ -197,17 +198,17 @@ const userDashBoardsqlite = async (req, res, next) => {
         );
 
         const recentOrders = await sequelize.query(
-            recentOrdersDescQuery,{
-                replacements:{userId},
-                transaction: t,
-                type: sequelize.QueryTypes.SELECT
-            }
+            recentOrdersDescQuery, {
+            replacements: { userId },
+            transaction: t,
+            type: sequelize.QueryTypes.SELECT
+        }
         )
 
         await t.commit();
 
         res.send({
-            "banner":banner,
+            "banner": banner,
             trendingProducts,
             recentOrders
         })
@@ -230,9 +231,15 @@ const userDashBoardPostgres = async (req, res, next) => {
     const t = await sequelize.transaction();
     try {
         const userId = req.payload.userId;
-        const banner = "https://qscihnogyuzgcmmqmans.supabase.co/storage/v1/object/public/grocery/banner.jpg";
+        const bannersQuery = `SELECT * FROM "Banner";`;
         const trendingProductsquery = `SELECT * FROM "Product" ORDER BY id ASC LIMIT 10;`;
         const recentOrdersDescQuery = `SELECT * FROM "Cart" WHERE "userId" = :userId ORDER BY id DESC LIMIT 15`;
+
+
+        const banners = await sequelize.query(bannersQuery, {
+            transaction: t,
+            type: sequelize.QueryTypes.SELECT
+        });
 
 
         const trendingProducts = await sequelize.query(
@@ -244,17 +251,17 @@ const userDashBoardPostgres = async (req, res, next) => {
         );
 
         const recentOrders = await sequelize.query(
-            recentOrdersDescQuery,{
-                replacements:{userId},
-                transaction: t,
-                type: sequelize.QueryTypes.SELECT
-            }
+            recentOrdersDescQuery, {
+            replacements: { userId },
+            transaction: t,
+            type: sequelize.QueryTypes.SELECT
+        }
         )
 
         await t.commit();
 
         res.send({
-            "banner":banner,
+            banners,
             trendingProducts,
             recentOrders
         })
@@ -274,7 +281,120 @@ const userDashBoardPostgres = async (req, res, next) => {
 
 }
 
+const createBannersRemote = async (req, res, next) => {
+    // const t = await sequelize.transaction();
+    try {
+        const files = req.files; // Access the uploaded files
+        if (!files || files.length === 0) {
+            return res.status(400).send('No files uploaded');
+        }
+
+        const supabase = require("../helpers/supabase_client");
+
+        let uploadedImages = [];
+
+
+        for (const file of files) {
+            const { data, error } = await supabase.storage.from(process.env.SUPABASE_BUCKET_NAME).upload(file.originalname, file.buffer, {
+                contentType: file.mimetype,
+                upsert: true, // Set to true if you want to overwrite files with the same name
+            });
+
+            if (error) {
+                console.log(error);
+                return next(createError.InternalServerError("Error in uploading files to Supabase"));
+            }
+
+            uploadedImages.push(`${process.env.SUPABASE_URL}/storage/v1/object/public/${process.env.SUPABASE_BUCKET_NAME}/${file.originalname}`);
+        }
+
+        // Create SQL values dynamically
+        const values = uploadedImages
+            .map((img) => `('${img}')`)
+            .join(',');
+
+        const query = `
+            INSERT INTO "Banner" ("bannerUrl")
+            VALUES ${values};
+            `;
+        await sequelize.query(query);
+
+        res.send(uploadedImages);
+
+    } catch (error) {
+
+        console.log(error);
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"))
+        }
+
+        next(error)
+    }
+}
+
+const removeABannerRemote = async (req, res, next) => {
+    const t = await sequelize.transaction();
+    try {
+        const { bannerId } = req.params;
+
+        if (isNaN(Number(bannerId))) {
+            return next(createError.BadRequest("Invalid Banner ID"));
+        }
+
+        const existingBanner = await sequelize.query(`
+            SELECT "bannerUrl"
+            FROM "Banner"
+            WHERE id = :bannerId;
+        `, {
+            replacements: { bannerId },
+            transaction: t,
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        if (!existingBanner) {
+            return next(createError.NotFound("Banner not found"));
+        }
+
+
+        await sequelize.query(`
+            DELETE FROM "Banner"
+            WHERE id = :bannerId;
+           
+        `, {
+            replacements: { bannerId },
+            transaction: t,
+            type: sequelize.QueryTypes.DELETE
+        });
+
+        const bannerUrlToDelete = existingBanner[0].bannerUrl;
+
+
+        const supabase = require("../helpers/supabase_client");
+        const imagePath = bannerUrlToDelete.split('/').pop(); // Extract the image path from the URL
+        const { error } = await supabase.storage.from(process.env.SUPABASE_BUCKET_NAME).remove([imagePath]);
+
+        if (error) {
+            console.error('Error deleting image from Supabase:', error);
+            return next(createError.InternalServerError("Error in deleting banner image from Supabase"));
+        }
+
+        await t.commit();
+        res.send("Banner deleted successfully");
+
+    } catch (error) {
+        await t.rollback();
+        console.log(error);
+
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"))
+        }
+
+        next(error)
+    }
+}
 
 
 
-module.exports = { adminDashBoardForSqlite, adminDashBoardForPostgres, userDashBoardsqlite,userDashBoardPostgres}
+
+module.exports = { removeABannerRemote, createBannersRemote, adminDashBoardForSqlite, adminDashBoardForPostgres, userDashBoardsqlite, userDashBoardPostgres }
+

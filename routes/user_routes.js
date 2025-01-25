@@ -60,7 +60,7 @@ router.post("/signIn",JWT.verifyAuthToken, AuthController.signIn);
 
 router.get("/listAllUsers", JWT.verifyAccessToken, AdminVerification.verifyAdmin, AuthController.listAllUsers);
 
-router.put("/updateAUser/:id", JWT.verifyAccessToken, AdminVerification.verifyAdmin, AuthController.updateUser);
+router.put("/updateAUser/:id", JWT.verifyAccessToken, AuthController.updateUser);
 
 router.delete("/deleteAUser/:id", JWT.verifyAccessToken, AdminVerification.verifyAdmin, AuthController.deleteUser);
 

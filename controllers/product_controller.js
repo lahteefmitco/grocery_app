@@ -10,8 +10,199 @@ require("dotenv").config();
 
 const mode = process.env.NODE_ENV || "development";
 
+const createProductForRemote = async (req, res, next) => {
+    const t = await sequelize.transaction();
+    try {
+
+        var receivedData = req.body;
+        console.log(receivedData);
+
+        const categories = receivedData.categories;
+
+        const product = receivedData.product;
+
+        // Validation of body request
+
+        if (!categories || !product) {
+            return next(createError.BadRequest("Please provide categories and product details"));
+        }
 
 
+        var { productName, productDescription, price, image, stockQuantity, unit, isAvailable, isTrending } = product;
+
+
+
+        if (!productName || !price || !unit) {
+            return next(createError.BadRequest("Please provide product name, price, categories and unit of the product"));
+        }
+        if (!productDescription) {
+            productDescription = null;
+        }
+        if (!image) {
+            image = null;
+        }
+        if (!stockQuantity) {
+            stockQuantity = 0;
+        }
+
+        if (isTrending === undefined) {
+            isTrending = false;
+        }
+        if (isAvailable === undefined) {
+            isAvailable = true;
+        }
+
+        if (!categories || categories.length === 0) {
+            return next(createError.BadRequest("Please provide categories"));
+        }
+
+        if (isNaN(Number(price))) {
+            return next(createError.BadRequest("Please provide a valid price"));
+        }
+
+        if (isNaN(Number(stockQuantity)) || stockQuantity < 0) {
+            return next(createError.BadRequest("Please provide a valid stock quantity"));
+        }
+
+
+        const [result, metadata] = await sequelize.query(`
+            INSERT INTO "Product" ("productName", "productDescription", "price", "image", "stockQuantity", "unit","isAvailable", "isTrending")
+            VALUES (:productName, :productDescription, :price, :image, :stockQuantity, :unit, :isAvailable, :isTrending)
+            RETURNING id;
+            `,
+            {
+                replacements: { productName, productDescription, price, image, stockQuantity, unit, isAvailable, isTrending },
+                transaction: t
+            });
+
+
+
+        const productId = result[0]["id"];
+
+        // Insert the categories
+        for (let i = 0; i < categories.length; i++) {
+            const categoryId = categories[i];
+
+            // Check if the category exists
+            const [categoryExists] = await sequelize.query(`
+                SELECT id FROM "Category" WHERE id = :categoryId;
+            `, {
+                replacements: { categoryId },
+                type: sequelize.QueryTypes.SELECT,
+                transaction: t
+            });
+
+            if (!categoryExists) {
+                await t.rollback();
+                return next(createError.BadRequest(`Category with id ${categoryId} does not exist`));
+            }
+
+            await sequelize.query(`
+                INSERT INTO "CategoryProductJunctionTable" ("categoryId", "productId")
+                VALUES (:categoryId, :productId);
+            `,
+                {
+                    replacements: { categoryId, productId },
+                    transaction: t
+                });
+        }
+
+
+        await t.commit();
+        res.status(201).send({ message: "Product created successfully", productId });
+
+
+    } catch (error) {
+        await t.rollback();
+        console.log(error);
+        if (error.name === "SequelizeUniqueConstraintError") {
+            return next(createError.BadRequest("Unique constraint error, productName is already used"))
+        }
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"))
+        }
+
+        next(error)
+    }
+}
+
+const getProductUnderACategoryForRemote = async (req, res, next) => {
+
+    try {
+        const { categoryId } = req.params;
+
+        const getAvailableProducts = req.query.getAvailableProducts;
+
+        console.log(`Get available products ${getAvailableProducts}`);
+
+
+
+
+
+        // Validate the input
+        if (isNaN(Number(categoryId))) {
+            return next(createError.BadRequest("Please provide a valid category id"));
+        }
+
+        // Check if the category exists
+        const categoryExistsQuery = `
+            SELECT id FROM "Category" WHERE id = :categoryId;
+        `;
+        const [categoryExists] = await sequelize.query(categoryExistsQuery, {
+            replacements: { categoryId },
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        if (!categoryExists) {
+            return next(createError.NotFound(`Category with id ${categoryId} does not exist`));
+        }
+
+        let productQuery = "";
+
+        // Query to get the products under a category
+        if (getAvailableProducts === "true") {
+            productQuery = `
+            SELECT p.id, p."productName", p."productDescription", p.price, p.image, p."stockQuantity", p.unit, p."isAvailable",p."isTrending"
+            FROM "Product" p
+            JOIN "CategoryProductJunctionTable" cpjt
+            ON p.id = cpjt."productId"
+            WHERE cpjt."categoryId" = :categoryId AND p."isAvailable" = true;
+        `;
+        } else if (getAvailableProducts === "false") {
+            productQuery = `
+            SELECT p.id, p."productName", p."productDescription", p.price, p.image, p."stockQuantity", p.unit, p."isAvailable",p."isTrending"
+            FROM "Product" p
+            JOIN "CategoryProductJunctionTable" cpjt
+            ON p.id = cpjt."productId"
+            WHERE cpjt."categoryId" = :categoryId AND p."isAvailable" = false;
+        `;
+        }
+
+        else {
+            productQuery = `
+            SELECT p.id, p."productName", p."productDescription", p.price, p.image, p."stockQuantity", p.unit, p."isAvailable",p."isTrending"
+            FROM "Product" p
+            JOIN "CategoryProductJunctionTable" cpjt
+            ON p.id = cpjt."productId"
+            WHERE cpjt."categoryId" = :categoryId;
+        `;
+        }
+        const products = await sequelize.query(productQuery, {
+            replacements: { categoryId },
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        res.send(products);
+
+    } catch (error) {
+        console.log(error);
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"))
+        }
+
+        next(error);
+    }
+}
 
 
 const createProduct = async (req, res, next) => {
@@ -42,11 +233,11 @@ const createProduct = async (req, res, next) => {
                     replacements: { productName, productDescription, price, image, stockQuantity, unit },
                 });
 
-            
+
 
             productId = result[0]["id"];
         } else {
-             await sequelize.query(`
+            await sequelize.query(`
                 INSERT INTO "Product" ("productName", "productDescription", "price", "image", "stockQuantity", "unit")
                 VALUES (:productName, :productDescription, :price, :image, :stockQuantity, :unit);
                 `,
@@ -54,15 +245,15 @@ const createProduct = async (req, res, next) => {
                     replacements: { productName, productDescription, price, image, stockQuantity, unit },
                 });
 
-                // Get the ID of the last inserted row
-                const [result] = await sequelize.query(`
+            // Get the ID of the last inserted row
+            const [result] = await sequelize.query(`
                 SELECT last_insert_rowid() AS id;
-                `, 
+                `,
                 {
                     type: sequelize.QueryTypes.SELECT
                 });
 
-                productId = result.id;
+            productId = result.id;
 
         }
 
@@ -110,25 +301,76 @@ const listAllAvailableProducts = async (req, res, next) => {
 
 
 
-
-
-const listAllProducts = async (req, res, next) => {
+const listAllProductsRemote = async (req, res, next) => {
     try {
-        const isAvailable = req.query.isAvailable;
+        let { isAvailable, isTrending } = req.query;
+        console.log("query:--");
+
         console.log(isAvailable);
+        console.log(isTrending);
 
-        var [products, metadata] = [];
 
-        if (!isAvailable) {
-            [products, metadata] = await sequelize.query(`
-                SELECT * FROM "Product";
-            `);
+
+        let productQuery = "";
+        if (`${isAvailable}` === "true" && `${isTrending}` === "true") {
+            productQuery = `
+            SELECT * FROM "Product"
+            WHERE "isAvailable" = true AND "isTrending" = true;
+        `;
+        }
+        else if (`${isAvailable}` === "true" && `${isTrending}` === "false") {
+            productQuery = `
+            SELECT * FROM "Product"
+            WHERE "isAvailable" = true AND "isTrending" = false;
+        `;
+        } else if (`${isAvailable}` === "false" && `${isTrending}` === "true") {
+            productQuery = `
+            SELECT * FROM "Product"
+            WHERE "isAvailable" = false AND "isTrending" = true;
+        `;
+        }
+        else if (`${isAvailable}` === "false" && `${isTrending}` === "false") {
+            productQuery = `
+            SELECT * FROM "Product"
+            WHERE "isAvailable" = false AND "isTrending" = false;
+        `;
+        }
+        else if (`${isAvailable}` === "true" && isTrending === undefined) {
+            productQuery = `
+            SELECT * FROM "Product"
+            WHERE "isAvailable" = true;
+        `;
+
+        }
+        else if (`${isAvailable}` === "false" && isTrending === undefined) {
+            productQuery = `
+            SELECT * FROM "Product"
+            WHERE "isAvailable" = false;
+        `;
+
+        }
+        else if (isAvailable === undefined && isTrending === "true") {
+            productQuery = `
+            SELECT * FROM "Product"
+            WHERE "isTrending" = true;
+        `;
+
+        }
+        else if (isAvailable === undefined && isTrending === "false") {
+            productQuery = `
+            SELECT * FROM "Product"
+            WHERE "isTrending" = false;
+        `;
+
         } else {
-            [products, metadata] = await sequelize.query(`
-                SELECT * FROM "Product" WHERE "isAvailable" = ${isAvailable};
-            `);
+            productQuery = `
+            SELECT * FROM "Product";
+        `;
         }
 
+        const products = await sequelize.query(productQuery, {
+            type: sequelize.QueryTypes.SELECT
+        });
 
         res.send(products);
 
@@ -192,7 +434,7 @@ const updateProductImage = async (req, res, next) => {
         }// Generate a unique filename
 
         console.log("Supabase");
-        
+
 
         // Upload the file buffer directly to Supabase
         const { data, error } = await supabase.storage
@@ -205,7 +447,7 @@ const updateProductImage = async (req, res, next) => {
         if (error) throw error;
 
         console.log("passed");
-        
+
 
 
         const image = `${process.env.SUPABASE_URL}/storage/v1/object/public/${process.env.SUPABASE_BUCKET_NAME}/${fileName}`;
@@ -306,6 +548,8 @@ const getProductById = async (req, res, next) => {
 
         if (!productId) next(createError.BadRequest("Please provide product id"));
 
+        if (isNaN(Number(productId))) next(createError.BadRequest("Please provide a valid product id"));
+
 
         // Check if the product exists
         const productQuery = `SELECT * FROM "Product" WHERE id = :productId`;
@@ -327,7 +571,8 @@ const getProductById = async (req, res, next) => {
 }
 
 
-const updateProduct = async (req, res, next) => {
+const updateProductRemote = async (req, res, next) => {
+    const t = await sequelize.transaction();
     try {
 
 
@@ -335,23 +580,38 @@ const updateProduct = async (req, res, next) => {
 
         // Check if the product exists
         const productExistsQuery = `SELECT id, image FROM "Product" WHERE id = :productId`;
-        const [productExistsResult] = await sequelize.query(productExistsQuery, {
+        const [productExistsResult] = await sequelize.query(
+            productExistsQuery, {
             replacements: { productId },
-            type: sequelize.QueryTypes.SELECT
-        });
+            type: sequelize.QueryTypes.SELECT,
+            transaction: t
+        },
+        );
 
         if (!productExistsResult) {
             return next(createError.NotFound(`Product with  ${productId} not found`));
         }
 
         console.log(`Product exist result ${productExistsResult}`);
-        
 
-        var { productName, productDescription, price, image, stockQuantity, unit, isAvailable } = req.body;
+        var receivedData = req.body;
+        console.log(receivedData);
+
+        const categories = receivedData.categories;
+        const product = receivedData.product;
+
+        if (!categories || !product) {
+            return next(createError.BadRequest("Please provide categories and product details"));
+        }
+
+
+
+        var { productName, productDescription, price, image, stockQuantity, unit, isAvailable, isTrending } = product;
+
 
 
         if (!productName || !price || !unit) {
-            return next(createError.BadRequest("Please provide product name, price, and unit of the product"));
+            return next(createError.BadRequest("Please provide product name, price, categories and unit of the product"));
         }
         if (!productDescription) {
             productDescription = null;
@@ -361,13 +621,18 @@ const updateProduct = async (req, res, next) => {
         }
         if (!stockQuantity) {
             stockQuantity = 0;
-            isAvailable = false;
         }
 
+        if (isTrending === undefined) {
+            isTrending = false;
+        }
         if (isAvailable === undefined) {
-            return next(createError.BadRequest("Please provide isAvailable value of the product"));
+            isAvailable = true;
         }
 
+        if (!categories || categories.length === 0) {
+            return next(createError.BadRequest("Please provide categories"));
+        }
         if (isNaN(Number(price))) {
             return next(createError.BadRequest("Please provide a valid price"));
         }
@@ -375,11 +640,6 @@ const updateProduct = async (req, res, next) => {
         if (isNaN(Number(stockQuantity)) || stockQuantity < 0) {
             return next(createError.BadRequest("Please provide a valid stock quantity"));
         }
-
-        if (stockQuantity === 0) {
-            isAvailable = false;
-        }
-
 
 
         await sequelize.query(`
@@ -390,23 +650,68 @@ const updateProduct = async (req, res, next) => {
             image = :image, 
             "stockQuantity" = :stockQuantity, 
             unit = :unit,
-            "isAvailable" = :isAvailable
+            "isAvailable" = :isAvailable,
+            "isTrending" = :isTrending
             WHERE id = :productId;
         `,
             {
-                replacements: { productName, productDescription, price, image, stockQuantity, unit, isAvailable, productId },
+                replacements: { productName, productDescription, price, image, stockQuantity, unit, isAvailable, isTrending, productId },
+                transaction: t
             });
 
-            if(image ===null && productExistsResult.image){
-                removeProductImage(productExistsResult.image);
+        if (image === null && productExistsResult.image) {
+            removeProductImage(productExistsResult.image);
+        }
+
+        // Delete the existing categories for the product
+        const deleteCategoryQuery = `DELETE FROM "CategoryProductJunctionTable" WHERE "productId" = :productId`;
+
+        await sequelize.query(deleteCategoryQuery, {
+            replacements: { productId },
+            type: sequelize.QueryTypes.DELETE,
+            transaction: t
+        });
+
+
+         // Insert the categories
+         for (let i = 0; i < categories.length; i++) {
+            const categoryId = categories[i];
+
+            // Check if the category exists
+            const [categoryExists] = await sequelize.query(`
+                SELECT id FROM "Category" WHERE id = :categoryId;
+            `, {
+                replacements: { categoryId },
+                type: sequelize.QueryTypes.SELECT,
+                transaction: t
+            });
+
+            if (!categoryExists) {
+                await t.rollback();
+                return next(createError.BadRequest(`Category with id ${categoryId} does not exist`));
             }
 
-        
+            await sequelize.query(`
+                INSERT INTO "CategoryProductJunctionTable" ("categoryId", "productId")
+                VALUES (:categoryId, :productId);
+            `,
+                {
+                    replacements: { categoryId, productId },
+                    transaction: t
+                });
+        }
+
+        await t.commit();
+
+
+
+
 
         res.send({ message: "Product is updated successfully" });
 
     } catch (error) {
         console.log(error);
+        await t.rollback();
         if (error.name === "SequelizeDatabaseError") {
             return next(createError.InternalServerError("Database problem, please contact with developer"))
         }
@@ -456,8 +761,6 @@ const updateProductPrice = async (req, res, next) => {
         next(createError.BadRequest(`Error in updating product price: ${error.message}`));
     }
 }
-
-
 
 
 
@@ -567,7 +870,8 @@ const updateProductStockQuantity = async (req, res, next) => {
 }
 
 
-const deleteProduct = async (req, res, next) => {
+const deleteProductRemote = async (req, res, next) => {
+    const t = await sequelize.transaction();
     try {
         const { productId } = req.params;
 
@@ -575,7 +879,8 @@ const deleteProduct = async (req, res, next) => {
         const productExistsQuery = `SELECT id, image FROM "Product" WHERE id = :productId`;
         const [productExistsResult] = await sequelize.query(productExistsQuery, {
             replacements: { productId },
-            type: sequelize.QueryTypes.SELECT
+            type: sequelize.QueryTypes.SELECT,
+            transaction: t
         });
 
         if (!productExistsResult) {
@@ -585,7 +890,8 @@ const deleteProduct = async (req, res, next) => {
         const deleteQuery = `DELETE FROM "Product" WHERE id = :productId`;
         await sequelize.query(deleteQuery, {
             replacements: { productId },
-            type: sequelize.QueryTypes.DELETE
+            type: sequelize.QueryTypes.DELETE,
+            transaction:t
         });
 
         console.log("product exists image");
@@ -602,11 +908,14 @@ const deleteProduct = async (req, res, next) => {
         }
 
         
+        
+        await t.commit();
 
         res.send({ message: "Product deleted successfully" });
 
     } catch (error) {
         console.log(error);
+        await t.rollback();
         if (error.name === "SequelizeDatabaseError") {
             return next(createError.InternalServerError("Database problem, please contact with developer"))
         }
@@ -624,20 +933,20 @@ const searchProduct = async (req, res, next) => {
             return next(createError.BadRequest("Please provide a product name to search"));
         }
 
-        let searchQuery =  "";
+        let searchQuery = "";
 
-        if(mode === "production"){
+        if (mode === "production") {
             searchQuery = `
             SELECT * FROM "Product"
             WHERE "productName" ILIKE :productName
         `;
-        }else{
+        } else {
             searchQuery = `
              SELECT * FROM "Product"
             WHERE LOWER("productName") LIKE LOWER(:productName)
             `;
         }
-          
+
 
         const products = await sequelize.query(searchQuery, {
             replacements: { productName: `%${productName}%` },
@@ -753,7 +1062,7 @@ const getProductInventory = async (req, res, next) => {
 
 
 
-module.exports = { createProduct, listAllAvailableProducts, listAllProducts, updateProductImage, updateProduct, deleteProduct, searchProduct, updateProductAvailability, updateProductStockQuantity, getProductById, deleteProductImage, uploadImageToLocalFile, updateProductPrice, getProductInventory };
+module.exports = { createProductForRemote, getProductUnderACategoryForRemote, createProduct, listAllAvailableProducts, listAllProductsRemote, updateProductImage, updateProductRemote, deleteProductRemote, searchProduct, updateProductAvailability, updateProductStockQuantity, getProductById, deleteProductImage, uploadImageToLocalFile, updateProductPrice, getProductInventory, };
 
 const removeProductImage = async (image) => {
     try {
@@ -782,6 +1091,7 @@ const removeProductImage = async (image) => {
         return false;
     }
 }
+
 
 
 

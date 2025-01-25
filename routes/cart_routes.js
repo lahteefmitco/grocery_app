@@ -4,7 +4,7 @@ const CartController = require("../controllers/cart_controller");
 const AdminVerification = require("../helpers/verify_admin");
 
 
-router.get("/sampleQuery",CartController.sampleQuery);
+router.get("/sampleQuery", CartController.sampleQuery);
 router.post("/placeAnOrder", JWT.verifyAccessToken, CartController.addToCart);
 
 router.get("/listAllOrders", JWT.verifyAccessToken, AdminVerification.verifyAdmin, CartController.listAllCarts);
@@ -14,6 +14,8 @@ router.get("/searchOrdersInBetweenDates", JWT.verifyAccessToken, CartController.
 
 router.put("/updateAnOrder/:cartId", JWT.verifyAccessToken, CartController.updateCartWithProducts);
 router.delete("/deleteAnOrder/:cartId", JWT.verifyAccessToken, CartController.deleteCartWithProducts);
+
+router.patch("/acknowledgeOrder/:cartId/:acknowledge", JWT.verifyAccessToken, AdminVerification.verifyAdmin, CartController.aknowledgeCartRemote);
 
 
 

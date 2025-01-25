@@ -65,10 +65,33 @@ const sequelize = mode == "production" ? new Sequelize(database, user, password,
           image VARCHAR(1024),
           "stockQuantity" INTEGER NOT NULL DEFAULT 0,
           unit VARCHAR(50),
-          "isAvailable" BOOLEAN DEFAULT TRUE
+          "isAvailable" BOOLEAN DEFAULT TRUE,
+          "isTrending" BOOLEAN DEFAULT FALSE
       );
 
     `);
+
+
+      // Raw query to create the Category table
+      await sequelize.query(`
+      CREATE TABLE IF NOT EXISTS "Category" (
+      id SERIAL PRIMARY KEY,
+      name  VARCHAR(255) NOT NULL UNIQUE
+    );
+  `);
+
+      // Raw query to create the Category product table
+      await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS "CategoryProductJunctionTable" (
+    id SERIAL PRIMARY KEY,
+    "categoryId" INTEGER REFERENCES "Category"(id)
+      ON DELETE CASCADE 
+      ON UPDATE CASCADE,
+    "productId" INTEGER REFERENCES "Product"(id)
+      ON DELETE CASCADE 
+      ON UPDATE CASCADE
+  );
+`);
 
       // Raw query to create the Cart table
       await sequelize.query(`
@@ -100,13 +123,22 @@ const sequelize = mode == "production" ? new Sequelize(database, user, password,
       );
     `);
 
-      //  sample table to insert date time
+      // Create banner table
       await sequelize.query(`
-      CREATE TABLE IF NOT EXISTS "Sample" (
-        id SERIAL PRIMARY KEY, 
-       "dateTime" TIMESTAMP NOT NULL
-      );
-    `);
+    CREATE TABLE IF NOT EXISTS "Banner" (
+      id SERIAL PRIMARY KEY,
+      "bannerUrl" VARCHAR(1024) NOT NULL UNIQUE
+    );
+  `);
+
+
+      //  sample table to insert date time
+    //   await sequelize.query(`
+    //   CREATE TABLE IF NOT EXISTS "Sample" (
+    //     id SERIAL PRIMARY KEY, 
+    //    "dateTime" TIMESTAMP NOT NULL
+    //   );
+    // `);
     } else {
 
       // For development
@@ -139,6 +171,27 @@ const sequelize = mode == "production" ? new Sequelize(database, user, password,
 
     `);
 
+      // Raw query to create the Category table
+      await sequelize.query(`
+      CREATE TABLE IF NOT EXISTS "Category" (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name  VARCHAR(255) NOT NULL UNIQUE
+    );
+  `);
+
+      // Raw query to create the Category product table
+      await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS "CategoryProductJunctionTable" (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    "categoryId" INTEGER REFERENCES "Category"(id)
+      ON DELETE CASCADE 
+      ON UPDATE CASCADE,
+    "productId" INTEGER REFERENCES "Product"(id)
+      ON DELETE CASCADE 
+      ON UPDATE CASCADE
+  );
+`);
+
       // Raw query to create the Cart table
       await sequelize.query(`
     CREATE TABLE IF NOT EXISTS "Cart" (
@@ -166,6 +219,14 @@ const sequelize = mode == "production" ? new Sequelize(database, user, password,
       "productId" INTEGER REFERENCES "Product"(id)
         ON DELETE SET NULL
         ON UPDATE CASCADE
+      );
+    `);
+
+      // Create banner table
+      await sequelize.query(`
+      CREATE TABLE IF NOT EXISTS "Banner" (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        "bannerUrl" VARCHAR(1024) NOT NULL UNIQUE
       );
     `);
 

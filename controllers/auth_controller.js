@@ -85,12 +85,7 @@ const signUp = async (req, res, next) => {
         }
 
 
-
-
         const accessToken = await JWT.signInAccessToken(userId, userName, isAdmin)
-
-
-
 
         res.send({ token: accessToken, name, isAdmin, email, phoneNumber, profileImage })
 
@@ -194,12 +189,24 @@ const listAllUsers = async (req, res, next) => {
         const [results, metadata] = await sequelize.query(query,);
 
         console.log(results);
+        let updatedUsers = [];
+
+        if (mode === "development") {
+            updatedUsers = results.map(user => ({
+                ...user,
+                isAdmin: user.isAdmin === 1 ? true : false,
+                password: "********"
+            }));
+        } else {
+            updatedUsers = results.map(user => ({
+                ...user,
+                isAdmin: user.isAdmin === 1 ? true : false,
+                password: "********"
+            }));
+        }
 
 
-        const updatedUsers = results.map(user => ({
-            ...user,
-            isAdmin: user.isAdmin === 1 ? true : false
-        }));
+
 
         console.log(updatedUsers);
 
@@ -236,12 +243,6 @@ const deleteUser = async (req, res, next) => {
         });
 
 
-
-
-
-
-
-
         if (!userExistsResult) {
             return next(createError.BadRequest(`User with id ${userIdToDelete} not found`));
         }
@@ -251,23 +252,12 @@ const deleteUser = async (req, res, next) => {
         }
 
 
-
-
         const query = `DELETE FROM "User" WHERE id = :userIdToDelete`;
 
         await sequelize.query(query, {
             replacements: { userIdToDelete },
             type: sequelize.QueryTypes.DELETE
         },);
-
-
-
-
-
-
-
-
-
 
         res.send("Deleted user");
 
@@ -311,8 +301,8 @@ const updateUser = async (req, res, next) => {
         console.log(userExistsResult);
 
 
-        if (userIdToUpdate != userId && userExistsResult["isAdmin"]) {
-            return next(createError.Forbidden("Admin users can't update other admin users"));
+        if (userIdToUpdate != userId ) {
+            return next(createError.Forbidden("users can't update other  users"));
         }
 
         let { name, userName, password, isAdmin, email, phoneNumber, profileImage } = req.body;
@@ -350,9 +340,6 @@ const updateUser = async (req, res, next) => {
             "profileImage" = :profileImage
         WHERE id = :userIdToUpdate
     `;
-
-
-
 
 
 
@@ -452,23 +439,23 @@ const addImageToRemote = async (req, res, next) => {
         }
 
 
-        
+
 
         console.log(req.file.originalname);
 
         const fileName = `${Date.now()}_${req.file.originalname}`;
-       
-        
+
+
 
         // Delete existing image from Supabase if it exists
         if (user.profileImage) {
-           
-            
-         
-            
-            const imagePath = user.profileImage.split('/').pop(); 
+
+
+
+
+            const imagePath = user.profileImage.split('/').pop();
             console.log("---");
-            
+
             console.log(imagePath);
             // Extract the image path from the URL
             const { error: deleteError } = await supabase.storage.from(process.env.SUPABASE_BUCKET_NAME).remove([imagePath]);
@@ -482,7 +469,7 @@ const addImageToRemote = async (req, res, next) => {
         console.log("Supabase");
 
         const file = req.file;
-        
+
 
         // Upload the file buffer directly to Supabase
         const { data, error } = await supabase.storage
@@ -495,7 +482,7 @@ const addImageToRemote = async (req, res, next) => {
         if (error) throw error;
 
         console.log("passed");
-        
+
 
 
         const image = `${process.env.SUPABASE_URL}/storage/v1/object/public/${process.env.SUPABASE_BUCKET_NAME}/${fileName}`;
@@ -507,7 +494,7 @@ const addImageToRemote = async (req, res, next) => {
         `,
             {
                 replacements: { image, id },
-                type:sequelize.QueryTypes.UPDATE
+                type: sequelize.QueryTypes.UPDATE
             });
 
         console.log(image);
@@ -530,4 +517,4 @@ const addImageToRemote = async (req, res, next) => {
     }
 }
 
-module.exports = { createAuthToken, signUp, signIn, listAllUsers, deleteUser, updateUser, addImageToLocal,addImageToRemote };
+module.exports = { createAuthToken, signUp, signIn, listAllUsers, deleteUser, updateUser, addImageToLocal, addImageToRemote };
