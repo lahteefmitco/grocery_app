@@ -28,6 +28,9 @@ const createFolderIfNotExists = (folderName) => {
 const app = express();
 app.use(express.json());
 
+app.set('views', path.join(__dirname, 'views'));
+app.set("view engine", "ejs");
+
 
 sequelize.sync({ force: true }).then(
   () => {
@@ -42,7 +45,12 @@ if (mode === "development") {
   createFolderIfNotExists("images");
   app.use("/images", express.static(path.join(__dirname, "images")));
   app.use("/banner", express.static(path.join(__dirname, "banner")))
+
 }
+
+
+
+
 
 
 app.get("/", (req, res) => {
@@ -60,12 +68,22 @@ app.get("/createApiKey", async (req, res, next) => {
   }
 });
 
+app.get("/ejsTest", (req, res, next) => {
+  try {
+    res.render('forgot_password');
+
+  } catch (error) {
+    next(error)
+  }
+})
+
 app.use("/api/user", require("./routes/user_routes"));
 app.use("/api/category", require("./routes/category_route"));
 app.use("/api/product", require("./routes/product_routes"));
 app.use("/api/order", require("./routes/cart_routes"));
 app.use("/api/dashboard", require("./routes/dashboard_route"))
 app.use("/api/sample", require("./routes/sample_route"));
+//app.use("/api/email", require("./routes/email_sender"));
 
 
 
