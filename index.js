@@ -4,6 +4,8 @@ const sequelize = require("./helpers/database");
 const JWT = require("./helpers/jwt_helper");
 require("dotenv").config();
 
+
+
 const fs = require('fs');
 const path = require('path');
 
@@ -57,6 +59,8 @@ app.get("/", (req, res) => {
   res.send("Welcome to OXDO Technologies");
 });
 
+
+
 app.get("/createApiKey", async (req, res, next) => {
   try {
     if (req.headers.owner !== "OXDO") return next(createError.Unauthorized("Invalid owner"));
@@ -68,14 +72,14 @@ app.get("/createApiKey", async (req, res, next) => {
   }
 });
 
-app.get("/ejsTest", (req, res, next) => {
-  try {
-    res.render('forgot_password');
+// app.get("/ejsTest", (req, res, next) => {
+//   try {
+//     res.render('forgot_password');
 
-  } catch (error) {
-    next(error)
-  }
-})
+//   } catch (error) {
+//     next(error)
+//   }
+// })
 
 app.use("/api/user", require("./routes/user_routes"));
 app.use("/api/category", require("./routes/category_route"));

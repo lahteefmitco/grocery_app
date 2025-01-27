@@ -3,6 +3,11 @@ const JWT = require("../helpers/jwt_helper");
 const createError = require("http-errors");
 require("dotenv").config();
 
+const Crypto = require("../helpers/crypto");
+
+const Transporter = require("../helpers/email_sender");
+
+
 const mode = process.env.NODE_ENV || "development";
 
 
@@ -515,4 +520,156 @@ const addImageToRemote = async (req, res, next) => {
     }
 }
 
-module.exports = { createAuthToken, signUp, signIn, listAllUsers, deleteUser, updateUser, addImageToLocal, addImageToRemote };
+const forgotPasswordEmailSender = async (req, res, next) => {
+    try {
+        const { userName } = req.params;
+
+        const existingUserQuery = `SELECT * FROM "User" WHERE  "userName" =:userName`;
+
+        const existingUser = await sequelize.query(existingUserQuery, {
+            replacements: { userName },
+            type: sequelize.QueryTypes.SELECT
+        }
+        );
+
+
+        if (!existingUser) {
+            return next(createError.BadRequest(`User with userName = ${userName} is not exist`));
+        }
+
+        console.log(existingUser);
+
+        const token = await JWT.passwordResetToken(userName);
+
+
+        const passwordResetToken = Crypto.encrypt(token);
+
+        console.log(passwordResetToken);
+
+        const userEmail = existingUser[0].email;
+
+        const senderEmail = `Grocery ${process.env.SENDING_EMAIL}`;
+
+        const subject = "Reset Password";
+
+        const resetLink = `https://grocery-app-1h07.onrender.com/api/user/resetPassword?resetPassword=${passwordResetToken}`;
+
+        const content = `<p>Please click the link below to reset your password</p>
+                          <p style="color: red; font-size: 14px;">Link is valid only for 10 minut</p>
+                          <a href="${resetLink}" target="_blank">https://grocery-app-1h07.onrender.com/api/user/resetPassword</a>`;
+
+        const mailOptions = {
+            from: senderEmail,
+            to: userEmail,
+            subject: subject,
+            html: content
+        };
+
+
+        Transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+                console.error("Error sending email:", error);
+                return res.status(500).send("Email sending failed");
+            } else {
+                // console.log("Email sent:", info.response);
+                // console.log(info.messageId);
+                // console.log(info.rejected);
+                // console.log(info.pending);
+
+                return res.send("Email sent successfully");
+            }
+        });
+
+
+
+
+    } catch (error) {
+        console.log(error);
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"))
+        }
+
+
+        next(error)
+    }
+}
+
+const sendResetPasswordPage = async (req, res, next) => {
+    try {
+        const payload = req.payload;
+        const userName = payload.userName;
+        console.log(userName);
+
+        const query = `SELECT * FROM "User" WHERE "userName" = :userName`;
+        const [result, metadata] = await sequelize.query(query,
+            {
+                replacements: { userName },
+                type: sequelize.QueryTypes.SELECT
+            },
+        )
+
+        if (!result) return next(createError.Unauthorized("Token for the user deleted"));
+        console.log(result);
+
+        const passwordResetToken = await JWT.passwordResetToken(result.userName);
+
+        const encryptedToken = Crypto.encrypt(passwordResetToken);
+        console.log(encryptedToken);
+
+
+        res.render('forgot_password', { token: encryptedToken });
+
+
+    } catch (error) {
+        console.log(error);
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"))
+        }
+
+
+        next(error)
+    }
+}
+
+const updatePassword = async (req, res, next) => {
+    try {
+        const { password } = req.query;
+        const { userName } = req.payload;
+
+
+        console.log(`Password ${password}`);
+        console.log(`Username ${userName}`);
+
+
+
+        if (!password || password.length < 6) {
+            return next(createError.BadRequest("Password is missing or password length is less than 6, Please contact developer"));
+        }
+
+
+
+        const updatePasswordQuery = `UPDATE "User"
+            SET "password" = :password
+            WHERE "userName" = :userName;`;
+
+
+        await sequelize.query(updatePasswordQuery, {
+            replacements: { password, userName },
+            type: sequelize.QueryTypes.UPDATE
+        })
+
+        res.send({ message: "updated successfully" });
+
+
+    } catch (error) {
+        console.log(error);
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"))
+        }
+        next(error)
+    }
+}
+
+
+
+module.exports = { updatePassword, sendResetPasswordPage, forgotPasswordEmailSender, createAuthToken, signUp, signIn, listAllUsers, deleteUser, updateUser, addImageToLocal, addImageToRemote };

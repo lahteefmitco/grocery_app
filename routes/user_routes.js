@@ -4,7 +4,7 @@ const JWT = require("../helpers/jwt_helper");
 const path = require('path');
 const AdminVerification = require("../helpers/verify_admin");
 const sequelize = require("../helpers/database");
-const Transporter = require("../helpers/email_sender")
+
 
 const multer = require("multer");
 
@@ -52,41 +52,20 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: mode === "development" ? storage : multer.memoryStorage() });
 
-router.get("/forgotPassword/:userName", (req, res, next) => {
-    try {
-        // Construct the URL with the secret token as a query parameter
-        const resetLink = `https://sample.com/reset-password?token=${encodeURIComponent(secretToken)}`;
-
-        // Email options
-        const mailOptions = {
-            from: 'your-email@gmail.com', // Sender address
-            to: 'recipient-email@example.com', // Recipient email
-            subject: 'Password Reset', // Subject line
-            html: `
-    <p>Please click the link below to reset your password:</p>
-    <a href="${resetLink}" target="_blank">${resetLink}</a>
-  `, // HTML body
-        };
-
-        // Send the email
-        Transporter.sendMail(mailOptions, (error, info) => {
-            if (error) {
-                console.log('Error:', error);
-            } else {
-                console.log('Email sent:', info.response);
-                console.log('Secret Token:', secretToken); // Log the token for further use
-            }
-        });
+router.get("/resetPassword", JWT.verifyPasswordResetToken, AuthController.sendResetPasswordPage);
 
 
-    } catch (error) {
-        next(error);
-    }
-});
 
-router.get("/resetPassword/:userName", (req, res, next) => {
-    res.send("Hi");
-});
+router.post("/resetPassword/:userName", AuthController.forgotPasswordEmailSender);
+
+
+router.get("/updatePassword", JWT.verifyPasswordResetToken, AuthController.updatePassword);
+
+router.get("/passwordResetSuccess", (req, res) => {
+    res.render(`password_reset`);
+})
+
+
 
 router.post("/signUp", JWT.verifyAuthToken, AuthController.signUp);
 
