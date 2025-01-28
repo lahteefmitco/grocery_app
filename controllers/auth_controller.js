@@ -315,7 +315,7 @@ const updateUser = async (req, res, next) => {
         if (userName.length < 4) return next(createError.BadRequest("Username length is less than 4"));
         if (password.length < 6) return next(createError.BadRequest("password length is less than 6"));
 
-        if (isAdmin === undefined) return next(createError.BadRequest("isAdmin value not given"));
+    
 
         if (name === undefined) {
             name = null;
@@ -338,7 +338,6 @@ const updateUser = async (req, res, next) => {
         SET name = :name,
             "userName" = :userName,
             password = :password,
-            "isAdmin" = :isAdmin,
             email = :email,
             "phoneNumber" = :phoneNumber,
             "profileImage" = :profileImage
@@ -347,7 +346,7 @@ const updateUser = async (req, res, next) => {
 
 
         await sequelize.query(updateQuery, {
-            replacements: { userIdToUpdate, name, userName, password, isAdmin, email, phoneNumber, profileImage },
+            replacements: { userIdToUpdate, name, userName, password, email, phoneNumber, profileImage },
             type: sequelize.QueryTypes.UPDATE
         });
 

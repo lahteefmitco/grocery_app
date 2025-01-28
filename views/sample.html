@@ -1,103 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Password Field with Toggle Visibility</title>
+    <title>Password Visibility Toggle</title>
     <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-            font-family: Arial, sans-serif;
-        }
-
-        .form-container {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: 300px;
-            text-align: center;
-        }
-
-        .form-container h2 {
-            margin-bottom: 20px;
-        }
-
-        .input-group {
+        .eye-icon {
+            cursor: pointer;
+            margin-left: -30px;
             position: relative;
-            margin-bottom: 20px;
-        }
-
-        .input-group input {
-            width: 100%;
-            padding: 10px;
-            padding-right: 40px; /* Add space for the eye button */
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 16px;
-        }
-
-        .input-group button {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 18px;
-            color: #555;
-        }
-
-        .input-group button:hover {
-            color: #000;
-        }
-
-        .form-container button.submit {
-            padding: 10px 20px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-
-        .form-container button.submit:hover {
-            background-color: #218838;
+            top: 5px; /* Adjusts the icon position */
         }
     </style>
 </head>
-
 <body>
 
-    <div class="form-container">
-        <h2>Password Form</h2>
-        <form>
-            <div class="input-group">
-                <input type="password" id="password" placeholder="Enter Password" required>
-                <button type="button" onclick="togglePassword()">
-                    👁️
-                </button>
-            </div>
-            <button type="submit" class="submit">Submit</button>
-        </form>
-    </div>
+<div class="container">
+    <h2>Login Form</h2>
+    <form>
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required><br><br>
 
-    <script>
-        function togglePassword() {
-            const passwordInput = document.getElementById('password');
-            const isPassword = passwordInput.type === 'password'; // Check the current type
-            passwordInput.type = isPassword ? 'text' : 'password'; // Toggle type
-        }
-    </script>
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required>
+        <span class="eye-icon" id="togglePassword">👁️</span><br><br>
+
+        <button type="submit">Login</button>
+    </form>
+</div>
+
+<script>
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+
+    togglePassword.addEventListener('click', function () {
+        // Toggle the type attribute
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        
+        // Toggle the eye icon (optional)
+        this.textContent = type === 'password' ? '👁️' : '🙈'; // Change icon based on visibility
+    });
+</script>
 
 </body>
-
 </html>
+
