@@ -139,7 +139,7 @@ const signIn = async (req, res, next) => {
 
         console.log(result);
 
-        if (!result) return next(createError.NotFound("User not registered"));
+        if (!result) return next(createError.NotFound("User not registered or check password"));
         console.log(metadata);
 
 
