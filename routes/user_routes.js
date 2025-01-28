@@ -68,6 +68,8 @@ router.delete("/deleteAUser/:id", JWT.verifyAccessToken, AdminVerification.verif
 
 router.patch("/profileImage/:id", JWT.verifyAccessToken, upload.single("image"), mode == "development" ? AuthController.addImageToLocal : AuthController.addImageToRemote);
 
+router.patch("/updateAdminStatus/:id",JWT.verifyAccessToken,AdminVerification.verifyAdmin,AuthController.changeAdminStatus );
+
 
 router.post("/resetPassword/:userName", AuthController.forgotPasswordEmailSender);
 

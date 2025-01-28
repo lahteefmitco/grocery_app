@@ -92,7 +92,7 @@ const signUp = async (req, res, next) => {
 
         const accessToken = await JWT.signInAccessToken(userId, userName, isAdmin)
 
-        res.send({ token: accessToken, id:userId, name, isAdmin, email, phoneNumber, profileImage })
+        res.send({ token: accessToken, id: userId, name, isAdmin, email, phoneNumber, profileImage })
 
 
 
@@ -166,7 +166,7 @@ const signIn = async (req, res, next) => {
         }
 
 
-        res.send({ token: accessToken, id:userId, name, isAdmin, email, phoneNumber, profileImage })
+        res.send({ token: accessToken, id: userId, name, isAdmin, email, phoneNumber, profileImage })
 
 
 
@@ -313,9 +313,9 @@ const updateUser = async (req, res, next) => {
 
         if (!userName) return next(createError.BadRequest("No userName"));
         if (userName.length < 4) return next(createError.BadRequest("Username length is less than 4"));
-      
 
-    
+
+
 
         if (name === undefined) {
             name = null;
@@ -573,7 +573,7 @@ const forgotPasswordEmailSender = async (req, res, next) => {
                 // console.log(info.rejected);
                 // console.log(info.pending);
 
-                return res.send("Email sent successfully");
+                return res.send(`Email sent successfully to ${userEmail}`);
             }
         });
 
@@ -667,6 +667,61 @@ const updatePassword = async (req, res, next) => {
     }
 }
 
+const changeAdminStatus = async (req, res, next) => {
+    try {
+        const id = req.params.id;
+
+        console.log(id);
 
 
-module.exports = { updatePassword, sendResetPasswordPage, forgotPasswordEmailSender, createAuthToken, signUp, signIn, listAllUsers, deleteUser, updateUser, addImageToLocal, addImageToRemote };
+        const { isAdmin } = req.body;
+
+        console.log(`is admin ${isAdmin}`);
+
+
+        if (isNaN(Number(id))) {
+            return next(createError.BadRequest("id is not valid"));
+        }
+
+        const query = `SELECT * FROM "User" WHERE "id" = :id`;
+        const [result, metadata] = await sequelize.query(query,
+            {
+                replacements: { id },
+                type: sequelize.QueryTypes.SELECT
+            },
+        )
+
+        if (!result) return next(createError.BadRequest("User with this id is not available"));
+
+        if (typeof isAdmin !== "boolean") {
+            return next(createError.BadRequest("isAdmin is not valid"));
+        }
+
+
+
+        const adminStatusCahngeQuery = `UPDATE "User"
+            SET "isAdmin" = :isAdmin
+            WHERE "id" = :id;`;
+
+        await sequelize.query(adminStatusCahngeQuery, {
+            replacements: { isAdmin, id },
+            type: sequelize.QueryTypes.UPDATE
+        })
+
+
+        res.send("Updated admin status");
+
+
+
+    } catch (error) {
+        console.log(error);
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"))
+        }
+        next(error)
+    }
+}
+
+
+
+module.exports = { changeAdminStatus, updatePassword, sendResetPasswordPage, forgotPasswordEmailSender, createAuthToken, signUp, signIn, listAllUsers, deleteUser, updateUser, addImageToLocal, addImageToRemote };

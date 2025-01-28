@@ -109,7 +109,7 @@ const createProductForRemote = async (req, res, next) => {
 
 
         await t.commit();
-        res.status(201).send({ message: "Product created successfully", productId });
+        res.status(200).send({ message: "Product created successfully", productId });
 
 
     } catch (error) {
@@ -673,8 +673,8 @@ const updateProductRemote = async (req, res, next) => {
         });
 
 
-         // Insert the categories
-         for (let i = 0; i < categories.length; i++) {
+        // Insert the categories
+        for (let i = 0; i < categories.length; i++) {
             const categoryId = categories[i];
 
             // Check if the category exists
@@ -891,7 +891,7 @@ const deleteProductRemote = async (req, res, next) => {
         await sequelize.query(deleteQuery, {
             replacements: { productId },
             type: sequelize.QueryTypes.DELETE,
-            transaction:t
+            transaction: t
         });
 
         console.log("product exists image");
@@ -907,8 +907,8 @@ const deleteProductRemote = async (req, res, next) => {
             }
         }
 
-        
-        
+
+
         await t.commit();
 
         res.send({ message: "Product deleted successfully" });

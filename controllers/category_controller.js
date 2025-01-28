@@ -24,7 +24,7 @@ const createCategory = async (req, res, next) => {
 
         const category = result[0];
 
-        res.status(201).send(category);
+        res.status(200).send(category);
 
     } catch (error) {
         console.log(error);

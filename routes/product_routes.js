@@ -49,7 +49,7 @@ router.get("/getAProduct/:productId", JWT.verifyAccessToken, ProductController.g
 
 router.get("/searchProducts", JWT.verifyAccessToken, ProductController.searchProduct);
 
-router.get("/listAllAvailableProducts", JWT.verifyAccessToken, ProductController.listAllAvailableProducts);
+//router.get("/listAllAvailableProducts", JWT.verifyAccessToken, ProductController.listAllAvailableProducts);
 
 router.get("/getProductInventory", JWT.verifyAccessToken, ProductController.getProductInventory);
 
