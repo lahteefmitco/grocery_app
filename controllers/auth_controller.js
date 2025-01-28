@@ -92,7 +92,7 @@ const signUp = async (req, res, next) => {
 
         const accessToken = await JWT.signInAccessToken(userId, userName, isAdmin)
 
-        res.send({ token: accessToken, name, isAdmin, email, phoneNumber, profileImage })
+        res.send({ token: accessToken, userId, name, isAdmin, email, phoneNumber, profileImage })
 
 
 
@@ -166,7 +166,7 @@ const signIn = async (req, res, next) => {
         }
 
 
-        res.send({ token: accessToken, name, isAdmin, email, phoneNumber, profileImage })
+        res.send({ token: accessToken, userId, name, isAdmin, email, phoneNumber, profileImage })
 
 
 
