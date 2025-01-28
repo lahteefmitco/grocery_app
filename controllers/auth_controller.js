@@ -309,11 +309,11 @@ const updateUser = async (req, res, next) => {
             return next(createError.Forbidden("users can't update other  users"));
         }
 
-        let { name, userName, password, isAdmin, email, phoneNumber, profileImage } = req.body;
+        let { name, userName, email, phoneNumber, profileImage } = req.body;
 
-        if (!userName || !password) return next(createError.BadRequest("No userName or password"));
+        if (!userName) return next(createError.BadRequest("No userName"));
         if (userName.length < 4) return next(createError.BadRequest("Username length is less than 4"));
-        if (password.length < 6) return next(createError.BadRequest("password length is less than 6"));
+      
 
     
 
@@ -337,7 +337,6 @@ const updateUser = async (req, res, next) => {
         UPDATE "User"
         SET name = :name,
             "userName" = :userName,
-            password = :password,
             email = :email,
             "phoneNumber" = :phoneNumber,
             "profileImage" = :profileImage
@@ -346,7 +345,7 @@ const updateUser = async (req, res, next) => {
 
 
         await sequelize.query(updateQuery, {
-            replacements: { userIdToUpdate, name, userName, password, email, phoneNumber, profileImage },
+            replacements: { userIdToUpdate, name, userName, email, phoneNumber, profileImage },
             type: sequelize.QueryTypes.UPDATE
         });
 
