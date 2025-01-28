@@ -372,6 +372,26 @@ const listAllProductsRemote = async (req, res, next) => {
             type: sequelize.QueryTypes.SELECT
         });
 
+        const resultProducts = [];
+
+        for (let index = 0; index < products.length; index++) {
+            const productId = products[index].id;
+            console.log(`product id ${productId}`);
+
+            const getCategoriesUnderAProduct = `SELECT "categoryId" 
+               FROM "CategoryProductJunctionTable" 
+               WHERE "productId" = :productId;
+            `
+            const categories = await sequelize.query(getCategoriesUnderAProduct, {
+                replacements: { productId },
+                type: sequelize.QueryTypes.SELECT
+            })
+
+            console.log(`Categories ${categories[0].categoryId}`);
+
+
+        }
+
         res.send(products);
 
 
