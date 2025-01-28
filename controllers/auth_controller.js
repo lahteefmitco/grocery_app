@@ -205,7 +205,6 @@ const listAllUsers = async (req, res, next) => {
         } else {
             updatedUsers = results.map(user => ({
                 ...user,
-                isAdmin: user.isAdmin === 1 ? true : false,
                 password: "********"
             }));
         }

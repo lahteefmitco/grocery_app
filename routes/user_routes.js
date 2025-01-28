@@ -52,19 +52,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: mode === "development" ? storage : multer.memoryStorage() });
 
-router.get("/resetPassword", JWT.verifyPasswordResetToken, AuthController.sendResetPasswordPage);
-
-
-
-router.post("/resetPassword/:userName", AuthController.forgotPasswordEmailSender);
-
-
-router.get("/updatePassword", JWT.verifyPasswordResetToken, AuthController.updatePassword);
-
-router.get("/passwordResetSuccess", (req, res) => {
-    res.render(`password_reset`);
-})
-
 
 
 router.post("/signUp", JWT.verifyAuthToken, AuthController.signUp);
@@ -81,5 +68,15 @@ router.delete("/deleteAUser/:id", JWT.verifyAccessToken, AdminVerification.verif
 
 router.patch("/profileImage/:id", JWT.verifyAccessToken, upload.single("image"), mode == "development" ? AuthController.addImageToLocal : AuthController.addImageToRemote);
 
+
+router.post("/resetPassword/:userName", AuthController.forgotPasswordEmailSender);
+
+router.get("/resetPassword", JWT.verifyPasswordResetToken, AuthController.sendResetPasswordPage);
+
+router.get("/updatePassword", JWT.verifyPasswordResetToken, AuthController.updatePassword);
+
+router.get("/passwordResetSuccess", (req, res) => {
+    res.render(`password_reset`);
+})
 
 module.exports = router;
