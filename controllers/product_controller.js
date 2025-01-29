@@ -377,7 +377,7 @@ const listAllProductsRemote = async (req, res, next) => {
         for (let index = 0; index < products.length; index++) {
             const product = products[index];
             const productId = product.id;
-            console.log(`product id ${productId}`);
+            
 
             const getCategoriesUnderAProduct = `SELECT "categoryId" 
                FROM "CategoryProductJunctionTable" 
@@ -390,8 +390,7 @@ const listAllProductsRemote = async (req, res, next) => {
 
             const newCategoryList = [];
 
-            console.log(`Categories ${categories[0].categoryId}`);
-            console.log(`Categories length ${categories.length}`)
+            
 
             for (let index = 0; index < categories.length; index++) {
                 const category = categories[index];
@@ -779,6 +778,22 @@ const updateProductPrice = async (req, res, next) => {
             return next(createError.BadRequest("Price should be greater than 0"));
         }
 
+        const productQuery = `SELECT * FROM "Product" WHERE id = :productId`;
+        const [product] = await sequelize.query(
+            productQuery,
+            {
+                replacements: { productId },
+                type: sequelize.QueryTypes.SELECT
+            }
+        );
+        console.log(product);
+        
+        if (!product) {
+            return next(createError.BadRequest("Product with this product is not available"));
+        }
+
+
+
         // Update the product price
         await sequelize.query(`
             UPDATE "Product"
@@ -816,7 +831,7 @@ const updateProductAvailability = async (req, res, next) => {
         });
 
         if (!productExistsResult) {
-            return next(createError.NotFound(`Product with  ${productId} not found`));
+            return next(createError.NotFound(`Product with product id  ${productId} not found`));
         }
 
         const { isAvailable } = req.body;

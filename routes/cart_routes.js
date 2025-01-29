@@ -15,7 +15,7 @@ router.get("/searchOrdersInBetweenDates", JWT.verifyAccessToken, CartController.
 router.put("/updateAnOrder/:cartId", JWT.verifyAccessToken, CartController.updateCartWithProducts);
 router.delete("/deleteAnOrder/:cartId", JWT.verifyAccessToken, CartController.deleteCartWithProducts);
 
-router.patch("/acknowledgeOrder/:cartId/:acknowledge", JWT.verifyAccessToken, AdminVerification.verifyAdmin, CartController.aknowledgeCartRemote);
+router.patch("/acknowledgeOrder/:cartId", JWT.verifyAccessToken, AdminVerification.verifyAdmin, CartController.aknowledgeCartRemote);
 
 
 

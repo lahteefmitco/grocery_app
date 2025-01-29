@@ -176,7 +176,7 @@ const addToCart = async (req, res, next) => {
         }
 
         await t.commit();
-        res.send({ message: "Added to cart successfully", cartId });
+        res.send({ message: "Added to cart successfully",orderId:cartId });
     } catch (error) {
         await t.rollback();
         console.log(error);
@@ -275,8 +275,8 @@ const getCartById = async (req, res, next) => {
 
         // Separate quantity and product details, and set product to null if all values are null
         const productDetails = products.map(product => {
-            const { quantity, productName, soldPrice, id, productDescription, price, image, stockQuantity, unit, isAvailable } = product;
-            const productInfo = { id, productDescription, price, image, stockQuantity, unit, isAvailable };
+            const { quantity, productName, soldPrice, id, productDescription, price, image, stockQuantity, unit, isAvailable,isTrending } = product;
+            const productInfo = { id, productName, productDescription, price, image, stockQuantity, unit, isAvailable,isTrending};
 
             // Check if all product properties are null
             const isProductNull = Object.values(productInfo).every(value => value === null);
@@ -851,15 +851,18 @@ const sampleQuery = async (req, res, next) => {
 
 const aknowledgeCartRemote = async (req, res, next) => {
     try {
-        const { cartId, acknowledge } = req.params;
+        const { cartId} = req.params;
+
+        const {acknowledged} = req.body;
+
         if (isNaN(Number(cartId))) return next(createError.BadRequest("Cart ID should be a number"));
 
-        if (acknowledge === undefined) return next(createError.BadRequest("Acknowledge field is required"));
-        if (acknowledge !== "true" && acknowledge !== "false") return next(createError.BadRequest("Acknowledge field should be either true or false"));
+        if (acknowledged === undefined) return next(createError.BadRequest("Acknowledged field is required"));
+        if (typeof acknowledged !== "boolean") return next(createError.BadRequest("Acknowledged field should be either true or false"));
 
 
         let acknowledgeCartQuery = ``;
-        if (acknowledge === "true") {
+        if (acknowledged === true) {
 
 
             acknowledgeCartQuery = `
@@ -880,7 +883,13 @@ const aknowledgeCartRemote = async (req, res, next) => {
             type: sequelize.QueryTypes.UPDATE
         });
 
-        res.send("Cart acknowledged successfully");
+        if(acknowledged){
+            res.send("Order acknowledged successfully");
+        }else{
+            res.send("Order acknowledged set as false");
+        }
+
+        
 
     } catch (error) {
         console.log(error);

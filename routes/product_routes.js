@@ -3,6 +3,7 @@ const JWT = require("../helpers/jwt_helper");
 const ProductController = require("../controllers/product_controller");
 const path = require('path');
 const AdminVerification = require("../helpers/verify_admin");
+const sequelize = require("../helpers/database")
 require("dotenv").config();
 const multer = require("multer");
 
@@ -15,11 +16,25 @@ const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, 'images/');
     },
-    filename: function (req, file, cb) {
+    filename: async function (req, file, cb) {
         const productName = req.params.productName;
         if (!productName) {
             return cb(new Error("Product Name is required"));
         }
+        const productQuery = `SELECT * FROM "Product" WHERE "productName" = :productName`;
+
+        // check it whether it is working or not
+        const product = await sequelize.query(
+            productQuery,
+            {
+                replacements: { productName },
+                type: sequelize.QueryTypes.SELECT
+            }
+        );
+        if (!product) {
+            return cb(new Error("Product with this productName is not available"));
+        }
+
         const extension = path.extname(file.originalname);
 
         // Extract file extension

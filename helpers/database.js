@@ -63,7 +63,7 @@ const sequelize = mode == "production" ? new Sequelize(database, user, password,
           "productDescription" TEXT,
           price DECIMAL(9, 2) NOT NULL DEFAULT 0.00,
           image VARCHAR(1024),
-          "stockQuantity" INTEGER NOT NULL DEFAULT 0,
+          "stockQuantity" DECIMAL(9, 2) NOT NULL DEFAULT 0.00,
           unit VARCHAR(50),
           "isAvailable" BOOLEAN DEFAULT TRUE,
           "isTrending" BOOLEAN DEFAULT FALSE
@@ -164,7 +164,7 @@ const sequelize = mode == "production" ? new Sequelize(database, user, password,
         "productDescription" TEXT,
         price DECIMAL(9, 2) NOT NULL DEFAULT 0.00,
         image VARCHAR(1024),
-        "stockQuantity" INTEGER NOT NULL DEFAULT 0,
+        "stockQuantity" Real NOT NULL DEFAULT 0,
         unit VARCHAR(50),
         "isAvailable" INTEGER DEFAULT 1
       );

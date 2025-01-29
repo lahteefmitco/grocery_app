@@ -11,7 +11,7 @@ const adminDashBoardForSqlite = async (req, res, next) => {
         const usersCountQuery = `SELECT COUNT(*) AS userCount FROM "User";`;
         const productCountQuery = `SELECT COUNT(*) AS productCount FROM "Product";`;
         const stockOutProductCountQuery = `SELECT COUNT(*) AS productCount FROM "Product" WHERE "stockQuantity" = 0;`;
-        const trendingProductsquery = `SELECT * FROM "Product" ORDER BY id ASC LIMIT 10;`;
+        const trendingProductsquery = `SELECT * FROM "Product" WHERE isTrending = true ORDER BY id ASC LIMIT 10;`;
         const allOrdersDescQuery = `SELECT * FROM "Cart" ORDER BY id DESC LIMIT 15`
 
         const [userCount, usersMetada] = await sequelize.query(
@@ -99,7 +99,7 @@ const adminDashBoardForPostgres = async (req, res, next) => {
         const usersCountQuery = `SELECT COUNT(*) AS userCount FROM "User";`;
         const productCountQuery = `SELECT COUNT(*) AS productCount FROM "Product";`;
         const stockOutProductCountQuery = `SELECT COUNT(*) AS productCount FROM "Product" WHERE "stockQuantity" = 0;`;
-        const trendingProductsquery = `SELECT * FROM "Product" ORDER BY id ASC LIMIT 10;`;
+        const trendingProductsquery = `SELECT * FROM "Product" WHERE "isTrending" = true ORDER BY id ASC LIMIT 10;`;
         const allOrdersDescQuery = `SELECT * FROM "Cart" ORDER BY id DESC LIMIT 15`
 
         const [userCount, usersMetada] = await sequelize.query(
@@ -185,7 +185,7 @@ const userDashBoardsqlite = async (req, res, next) => {
     try {
         const userId = req.payload.userId;
         const banner = "/banner/banner.jpg";
-        const trendingProductsquery = `SELECT * FROM "Product" ORDER BY id ASC LIMIT 10;`;
+        const trendingProductsquery = `SELECT * FROM "Product" WHERE "isTrending" = true ORDER BY id ASC LIMIT 10;`;
         const recentOrdersDescQuery = `SELECT * FROM "Cart" WHERE "userId" = :userId ORDER BY id DESC LIMIT 15`;
 
 
@@ -232,7 +232,7 @@ const userDashBoardPostgres = async (req, res, next) => {
     try {
         const userId = req.payload.userId;
         const bannersQuery = `SELECT * FROM "Banner";`;
-        const trendingProductsquery = `SELECT * FROM "Product" ORDER BY id ASC LIMIT 10;`;
+        const trendingProductsquery = `SELECT * FROM "Product" WHERE "isTrending" = true ORDER BY id ASC LIMIT 10;`;
         const recentOrdersDescQuery = `SELECT * FROM "Cart" WHERE "userId" = :userId ORDER BY id DESC LIMIT 15`;
 
 
