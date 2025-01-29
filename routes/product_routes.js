@@ -80,6 +80,8 @@ router.patch("/updateProductPrice/:productId", JWT.verifyAccessToken, AdminVerif
 
 router.patch("/updateProductAvailability/:productId", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.updateProductAvailability);
 
+router.patch("/updateisTrending/:productId", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.updateProductIsTrendingRemote);
+
 router.delete("/deleteProductImage/:productId", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.deleteProductImage);
 
 

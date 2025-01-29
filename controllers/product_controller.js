@@ -377,7 +377,7 @@ const listAllProductsRemote = async (req, res, next) => {
         for (let index = 0; index < products.length; index++) {
             const product = products[index];
             const productId = product.id;
-            
+
 
             const getCategoriesUnderAProduct = `SELECT "categoryId" 
                FROM "CategoryProductJunctionTable" 
@@ -390,7 +390,7 @@ const listAllProductsRemote = async (req, res, next) => {
 
             const newCategoryList = [];
 
-            
+
 
             for (let index = 0; index < categories.length; index++) {
                 const category = categories[index];
@@ -787,7 +787,7 @@ const updateProductPrice = async (req, res, next) => {
             }
         );
         console.log(product);
-        
+
         if (!product) {
             return next(createError.BadRequest("Product with this product is not available"));
         }
@@ -1107,6 +1107,58 @@ const getProductInventory = async (req, res, next) => {
     }
 }
 
+const updateProductIsTrendingRemote = async (req, res, next) => {
+    try {
+        const { productId } = req.params;
+        if (isNaN(Number(productId))) {
+            return next(createError.BadRequest(`product is not number`));
+        }
+
+        const productQuery = `SELECT * FROM "Product" WHERE id=:productId`
+
+        const [product] = await sequelize.query(
+            productQuery,
+            {
+                replacements: { productId },
+                type: sequelize.QueryTypes.SELECT
+            }
+        )
+        if (!product) {
+            return next(createError.BadRequest(`No product with this product id ${productId}`));
+        }
+
+        const { isTrending } = req.body;
+
+        if (isTrending ===undefined) {
+            return next(createError.BadRequest(`isTrending value is missing`));
+        }
+
+        if (typeof isTrending !== "boolean") {
+            return next(createError.BadRequest(`isTrending value should be true or false`));
+        }
+
+        await sequelize.query(`
+            UPDATE "Product"
+            SET "isTrending" = :isTrending
+            WHERE id = :productId;
+        `,
+            {
+                replacements: { isTrending, productId },
+            });
+
+        res.send({ message: "isTending value updated successfully" });
+
+
+
+    } catch (error) {
+        console.log(error);
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"));
+        }
+
+        next(createError.BadRequest(`Error in getting product inventory: ${error.message}`));
+    }
+}
 
 
 
@@ -1115,7 +1167,8 @@ const getProductInventory = async (req, res, next) => {
 
 
 
-module.exports = { createProductForRemote, getProductUnderACategoryForRemote, createProduct, listAllAvailableProducts, listAllProductsRemote, updateProductImage, updateProductRemote, deleteProductRemote, searchProduct, updateProductAvailability, updateProductStockQuantity, getProductById, deleteProductImage, uploadImageToLocalFile, updateProductPrice, getProductInventory, };
+
+module.exports = { updateProductIsTrendingRemote, createProductForRemote, getProductUnderACategoryForRemote, createProduct, listAllAvailableProducts, listAllProductsRemote, updateProductImage, updateProductRemote, deleteProductRemote, searchProduct, updateProductAvailability, updateProductStockQuantity, getProductById, deleteProductImage, uploadImageToLocalFile, updateProductPrice, getProductInventory, };
 
 const removeProductImage = async (image) => {
     try {
