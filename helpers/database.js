@@ -4,11 +4,6 @@ require("dotenv").config();
 const mode = process.env.NODE_ENV || "development";
 
 
-const user = mode == "production" ? process.env.AIVEN_DATABASE_USER : "postgres";
-const host = mode == "production" ? process.env.AIVEN_DATABASE_HOST : "localhost";
-const database = mode == "production" ? process.env.AIVEN_DATABASE_NAME : "grocery";
-const password = mode == "production" ? process.env.AIVEN_DATABASE_PASSWORD : "la@1234";
-const port = mode == "production" ? process.env.AIVEN_DATABASE_PORT : "5432";
 
 
 
