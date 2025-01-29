@@ -375,7 +375,8 @@ const listAllProductsRemote = async (req, res, next) => {
         const resultProducts = [];
 
         for (let index = 0; index < products.length; index++) {
-            const productId = products[index].id;
+            const product = products[index];
+            const productId = product.id;
             console.log(`product id ${productId}`);
 
             const getCategoriesUnderAProduct = `SELECT "categoryId" 
@@ -387,12 +388,29 @@ const listAllProductsRemote = async (req, res, next) => {
                 type: sequelize.QueryTypes.SELECT
             })
 
+            const newCategoryList = [];
+
             console.log(`Categories ${categories[0].categoryId}`);
+            console.log(`Categories length ${categories.length}`)
+
+            for (let index = 0; index < categories.length; index++) {
+                const category = categories[index];
+                newCategoryList.push(category.categoryId);
+
+            }
+
+
+            const output = {
+                product: product,
+                categories: newCategoryList
+            }
+
+            resultProducts.push(output);
 
 
         }
 
-        res.send(products);
+        res.send(resultProducts);
 
 
     } catch (error) {
