@@ -4,6 +4,11 @@ require("dotenv").config();
 const mode = process.env.NODE_ENV || "development";
 
 
+const user = mode == "production" ? process.env.AIVEN_DATABASE_USER : "postgres";
+const host = mode == "production" ? process.env.AIVEN_DATABASE_HOST : "localhost";
+const database = mode == "production" ? process.env.AIVEN_DATABASE_NAME : "grocery";
+const password = mode == "production" ? process.env.AIVEN_DATABASE_PASSWORD : "la@1234";
+const port = mode == "production" ? process.env.AIVEN_DATABASE_PORT : "5432";
 
 
 
@@ -12,30 +17,30 @@ const sequelize = mode == "production" ?
 
 
 
-  // new Sequelize(database, user, password, {
-  //   host,
-  //   port,
-  //   dialect: "postgres",
-  //   logging: false,
-  //   dialectOptions: {
-  //     ssl: {
-  //       require: true,
-  //       rejectUnauthorized: false,
-  //     },
-  //   },
-  // })
-
-  // Replace with your actual Neon connection string
-  new Sequelize(process.env.NEON_DATABASE_URL, {
+  new Sequelize(database, user, password, {
+    host,
+    port,
     dialect: "postgres",
+    logging: false,
     dialectOptions: {
       ssl: {
-        require: true, // Ensure SSL is used
-        rejectUnauthorized: false, // Prevent SSL issues with Neon
+        require: true,
+        rejectUnauthorized: false,
       },
     },
-    logging: false, // Disable SQL logging (optional)
   })
+
+  // Replace with your actual Neon connection string
+  // new Sequelize(process.env.NEON_DATABASE_URL, {
+  //   dialect: "postgres",
+  //   dialectOptions: {
+  //     ssl: {
+  //       require: true, // Ensure SSL is used
+  //       rejectUnauthorized: false, // Prevent SSL issues with Neon
+  //     },
+  //   },
+  //   logging: false, // Disable SQL logging (optional)
+  // })
 
   : new Sequelize({
     dialect: "sqlite",
