@@ -12,30 +12,43 @@ const port = mode == "production" ? process.env.AIVEN_DATABASE_PORT : "5432";
 
 
 
-const sequelize = mode == "production" ? new Sequelize(database, user, password, {
-  host,
-  port,
-  dialect: "postgres",
-  logging: false,
-  dialectOptions: {
-    ssl: {
-      require: true,
-      rejectUnauthorized: false,
-    },
-  },
-}) :
+
+const sequelize = mode == "production" ?
+
+
+
   // new Sequelize(database, user, password, {
   //   host,
   //   port,
   //   dialect: "postgres",
   //   logging: false,
-  // });
+  //   dialectOptions: {
+  //     ssl: {
+  //       require: true,
+  //       rejectUnauthorized: false,
+  //     },
+  //   },
+  // })
 
-  new Sequelize({
+  // Replace with your actual Neon connection string
+  new Sequelize(process.env.NEON_DATABASE_URL, {
+    dialect: "postgres",
+    dialectOptions: {
+      ssl: {
+        require: true, // Ensure SSL is used
+        rejectUnauthorized: false, // Prevent SSL issues with Neon
+      },
+    },
+    logging: false, // Disable SQL logging (optional)
+  })
+
+  : new Sequelize({
     dialect: "sqlite",
     storage: "./database.sqlite",
     logging: false,
   });
+
+
 
 (async () => {
   try {
@@ -133,12 +146,12 @@ const sequelize = mode == "production" ? new Sequelize(database, user, password,
 
 
       //  sample table to insert date time
-    //   await sequelize.query(`
-    //   CREATE TABLE IF NOT EXISTS "Sample" (
-    //     id SERIAL PRIMARY KEY, 
-    //    "dateTime" TIMESTAMP NOT NULL
-    //   );
-    // `);
+      //   await sequelize.query(`
+      //   CREATE TABLE IF NOT EXISTS "Sample" (
+      //     id SERIAL PRIMARY KEY, 
+      //    "dateTime" TIMESTAMP NOT NULL
+      //   );
+      // `);
     } else {
 
       // For development
