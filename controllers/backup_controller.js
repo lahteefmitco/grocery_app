@@ -26,7 +26,7 @@ const backUp = async (req, res, next) => {
         // Construct the pg_dump command
         const command = `pg_dump -U ${DB_USER} -h ${DB_HOST} -p ${DB_PORT} -F c -b -v ${DB_NAME}`;
 
-        exec(command, { env: { ...process.env, PGPASSWORD: DB_PASSWORD }, encoding: "buffer", maxBuffer: 1024 * 1024 * 50 }, async (error, stdout, stderr) => {
+        exec(command, { env: { ...process.env, PGPASSWORD: DB_PASSWORD}, encoding: "buffer", maxBuffer: 1024 * 1024 * 50 }, async (error, stdout, stderr) => {
             if (error) {
                 console.error("Backup error:", stderr.toString());
                 return res.status(500).json({ message: "Backup failed", error: stderr });
