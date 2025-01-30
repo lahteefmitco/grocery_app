@@ -87,7 +87,7 @@ app.use("/api/product", require("./routes/product_routes"));
 app.use("/api/order", require("./routes/cart_routes"));
 app.use("/api/dashboard", require("./routes/dashboard_route"))
 app.use("/api/sample", require("./routes/sample_route"));
-//app.use("/api/email", require("./routes/email_sender"));
+app.use("/api/backup", require("./routes/backup_routes"));
 
 
 
