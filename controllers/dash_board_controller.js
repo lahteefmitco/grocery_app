@@ -2,6 +2,7 @@ const sequelize = require("../helpers/database");
 const JWT = require("../helpers/jwt_helper");
 const createError = require("http-errors");
 require("dotenv").config();
+const BackblazeImageController = require("./backblaze_image_controller");
 
 const mode = process.env.NODE_ENV || "development";
 
@@ -332,6 +333,42 @@ const createBannersRemote = async (req, res, next) => {
     }
 }
 
+
+const createBannersRemoteBackBlaze = async (req, res, next) => {
+    try {
+
+        const files = req.files; // Access the uploaded files
+        if (!files || files.length === 0) {
+            return res.status(400).send('No files uploaded');
+        }
+
+        
+
+        for (const file of files) {
+            
+            const fileName = await BackblazeImageController.uploadImageToBackBaze(file,next);
+            if(!fileName){
+                return next(createError.InternalServerError("Can't upload image to Backblaze"));
+            }
+
+            console.log(fileName);
+            
+
+        }
+
+        res.send("Successfully added image")
+
+
+    } catch (error) {
+        console.log(error);
+        if (error.name === "SequelizeDatabaseError") {
+            return next(createError.InternalServerError("Database problem, please contact with developer"))
+        }
+
+        next(error)
+    }
+}
+
 const removeABannerRemote = async (req, res, next) => {
     const t = await sequelize.transaction();
     try {
@@ -396,5 +433,5 @@ const removeABannerRemote = async (req, res, next) => {
 
 
 
-module.exports = { removeABannerRemote, createBannersRemote, adminDashBoardForSqlite, adminDashBoardForPostgres, userDashBoardsqlite, userDashBoardPostgres }
+module.exports = { createBannersRemoteBackBlaze, removeABannerRemote, createBannersRemote, adminDashBoardForSqlite, adminDashBoardForPostgres, userDashBoardsqlite, userDashBoardPostgres }
 

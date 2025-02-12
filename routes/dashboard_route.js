@@ -35,6 +35,10 @@ router.get("/userDashBoardDatas", JWT.verifyAccessToken, mode == "development" ?
 
 router.post("/createBanners", JWT.verifyAccessToken, AdminVerification.verifyAdmin, upload.array("banners",10), DashboardController.createBannersRemote);
 
+router.post("/createBanners2",  upload.array("banners"), DashboardController.createBannersRemoteBackBlaze);
+
+
+
 router.delete("/deleteABanner/:bannerId",JWT.verifyAccessToken, AdminVerification.verifyAdmin,  DashboardController.removeABannerRemote);
 
 module.exports = router;

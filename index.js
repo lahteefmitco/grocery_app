@@ -4,6 +4,8 @@ const sequelize = require("./helpers/database");
 const JWT = require("./helpers/jwt_helper");
 require("dotenv").config();
 
+const {getBackBazeImage}= require("./controllers/backblaze_image_controller");
+
 
 
 const fs = require('fs');
@@ -88,6 +90,25 @@ app.use("/api/order", require("./routes/cart_routes"));
 app.use("/api/dashboard", require("./routes/dashboard_route"))
 app.use("/api/sample", require("./routes/sample_route"));
 app.use("/api/backup", require("./routes/backup_routes"));
+
+app.get("/api/getImage/:fileName", async(req,res,next)=>{
+  try {
+    const fileName = req.params.fileName;
+
+    const downloadUrl = await getBackBazeImage(fileName,next);
+
+
+    console.log(downloadUrl);
+
+    res.redirect(downloadUrl);
+    
+    
+  } catch (error) {
+    console.log(error);
+    next(error);
+    
+  }
+});
 
 
 
