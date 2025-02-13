@@ -314,16 +314,25 @@ const createBannersRemote = async (req, res, next) => {
             .map((img) => `('${img}')`)
             .join(',');
 
-        const query = `
+        console.log(values);
+        
+        for (let index = 0; index < values.length; index++) {
+            const value = values[index];
+            console.log(value);
+            
+            const query = `
             INSERT INTO "Banner" ("bannerUrl")
-            VALUES ${values};
+            VALUES ${value};
             `;
         await sequelize.query(query);
+            
+        }
+        
 
         res.send(uploadedImages);
 
     } catch (error) {
-
+        console.log("here")
         console.log(error);
         if (error.name === "SequelizeDatabaseError") {
             return next(createError.InternalServerError("Database problem, please contact with developer"))
