@@ -320,11 +320,11 @@ const createBannersRemote = async (req, res, next) => {
             const value = uploadedImages[index];
             console.log(value);
             
-            const query = `
-            INSERT INTO "Banner" ("bannerUrl")
-            VALUES ('${value}') ;
-            `;
-        await sequelize.query(query);
+            const query = `INSERT INTO "Banner" ("bannerUrl") VALUES ('${value}')`;
+
+            console.log(query);
+            
+            await sequelize.query(query);
             
         }
         

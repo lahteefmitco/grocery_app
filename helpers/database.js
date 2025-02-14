@@ -146,7 +146,7 @@ const sequelize = mode == "production" ?
       await sequelize.query(`
     CREATE TABLE IF NOT EXISTS "Banner" (
       id SERIAL PRIMARY KEY,
-      "bannerUrl" VARCHAR(1024) NOT NULL UNIQUE
+      "bannerUrl" VARCHAR(1024) NOT NULL 
     );
   `);
 
