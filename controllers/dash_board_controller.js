@@ -309,15 +309,21 @@ const createBannersRemote = async (req, res, next) => {
         }
 
         // Create SQL values dynamically
-        const values = uploadedImages
-            .map((img) => `('${img}')`)
-            .join(',');
+        // const values = uploadedImages
+        //     .map((img) => `('${img}')`)
+        //     .join(',');
 
-        const query = `
+        for(var index=0;index<uploadedImages.length;index++){
+            const uploadImage = uploadedImages[index];
+            const query = `
             INSERT INTO "Banner" ("bannerUrl")
-            VALUES ${values};
+            VALUES ('${uploadImage}');
             `;
         await sequelize.query(query);
+
+        }
+
+       
 
         res.send(uploadedImages);
 
