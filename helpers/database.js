@@ -226,7 +226,7 @@ const sequelize = mode == "production" ? new Sequelize(database, user, password,
       await sequelize.query(`
       CREATE TABLE IF NOT EXISTS "Banner" (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        "bannerUrl" VARCHAR(1024) NOT NULL UNIQUE
+        "bannerUrl" VARCHAR(1024) NOT NULL
       );
     `);
 
