@@ -341,20 +341,30 @@ const updateUser = async (req, res, next) => {
             "phoneNumber" = :phoneNumber,
             "profileImage" = :profileImage
         WHERE id = :userIdToUpdate
+        RETURNING id, name, "userName", email, "phoneNumber", "profileImage", "isAdmin"
     `;
 
 
-        await sequelize.query(updateQuery, {
+      const [updatedUser] = await sequelize.query(updateQuery, {
             replacements: { userIdToUpdate, name, userName, email, phoneNumber, profileImage },
             type: sequelize.QueryTypes.UPDATE
         });
 
+        if (!updatedUser || updatedUser.length === 0) {
+            return next(createError.InternalServerError("User update failed"));
+        }
 
 
-        res.send("User updated successfully");
+
+        res.json({
+            message: "User updated successfully",
+            user: updatedUser[0] // Return the updated user data
+        });
 
     } catch (error) {
         if (error.name === "SequelizeUniqueConstraintError") {
+            console.log(error);
+            
             return next(createError.BadRequest("Unique constraint error, username is already used"))
         }
         if (error.name === "SequelizeDatabaseError") {
