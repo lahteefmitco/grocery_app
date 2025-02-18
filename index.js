@@ -77,6 +77,10 @@ app.get("/cicd",(req,res)=>{
   res.send("CICD implemented");
 });
 
+app.get("/pullrequest",(req,res)=>{
+  res.send("Pull request implemented");
+})
+
 // app.get("/ejsTest", (req, res, next) => {
 //   try {
 //     res.render('forgot_password');
