@@ -72,6 +72,11 @@ app.get("/createApiKey", async (req, res, next) => {
   }
 });
 
+
+app.get("/cicd",(req,res)=>{
+  res.send("CICD implemented");
+});
+
 // app.get("/ejsTest", (req, res, next) => {
 //   try {
 //     res.render('forgot_password');
