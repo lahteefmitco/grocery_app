@@ -176,7 +176,7 @@ const addToCart = async (req, res, next) => {
         }
 
         await t.commit();
-        res.send({ message: "Added to cart successfully",orderId:cartId });
+        res.send({ message: "Added to cart successfully", orderId: cartId });
     } catch (error) {
         await t.rollback();
         console.log(error);
@@ -275,13 +275,14 @@ const getCartById = async (req, res, next) => {
 
         // Separate quantity and product details, and set product to null if all values are null
         const productDetails = products.map(product => {
-            const { quantity, productName, soldPrice, id, productDescription, price, image, stockQuantity, unit, isAvailable,isTrending } = product;
-            const productInfo = { id, productName, productDescription, price, image, stockQuantity, unit, isAvailable,isTrending};
+            const { quantity, productName, soldPrice, id, productDescription, price, image, stockQuantity, unit, isAvailable, isTrending } = product;
+            const productInfo = { id, productName, productDescription, price, image, stockQuantity, unit, isAvailable, isTrending };
 
             // Check if all product properties are null
             const isProductNull = Object.values(productInfo).every(value => value === null);
 
             return {
+                productId: id,
                 quantity,
                 productName,
                 soldPrice,
@@ -289,7 +290,13 @@ const getCartById = async (req, res, next) => {
             };
         });
 
-        res.send({ order: cart, products: productDetails });
+        res.send({
+            // order: cart, 
+            dateTime: cart.dateTime,
+            totalItems: cart.totalItems,
+            totalAmount: cart.totalAmount,
+            products: productDetails
+        });
 
     } catch (error) {
         console.log(error);
@@ -851,9 +858,9 @@ const sampleQuery = async (req, res, next) => {
 
 const aknowledgeCartRemote = async (req, res, next) => {
     try {
-        const { cartId} = req.params;
+        const { cartId } = req.params;
 
-        const {acknowledged} = req.body;
+        const { acknowledged } = req.body;
 
         if (isNaN(Number(cartId))) return next(createError.BadRequest("Cart ID should be a number"));
 
@@ -883,13 +890,13 @@ const aknowledgeCartRemote = async (req, res, next) => {
             type: sequelize.QueryTypes.UPDATE
         });
 
-        if(acknowledged){
+        if (acknowledged) {
             res.send("Order acknowledged successfully");
-        }else{
+        } else {
             res.send("Order acknowledged set as false");
         }
 
-        
+
 
     } catch (error) {
         console.log(error);
