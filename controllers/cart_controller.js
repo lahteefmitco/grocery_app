@@ -356,7 +356,7 @@ const getCartsByUserId = async (req, res, next) => {
         });
 
         if (carts.length === 0) {
-            return next(createError.NotFound("No orders found for this user"));
+            return res.send([]);
         }
 
         carts.forEach(cart => {
