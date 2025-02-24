@@ -356,8 +356,6 @@ const getCartsByUserId = async (req, res, next) => {
         });
 
         if (carts.length === 0) {
-            console.log("-----------");
-            
             return res.send([]);
         }
 
