@@ -63,7 +63,7 @@ router.get("/listAllUsers", JWT.verifyAccessToken, AdminVerification.verifyAdmin
 
 router.put("/updateAUser/:id", JWT.verifyAccessToken, AuthController.updateUser);
 
-router.delete("/deleteAUser/:id", JWT.verifyAccessToken, AdminVerification.verifyAdmin, AuthController.deleteUser);
+router.delete("/deleteAUser/:id", JWT.verifyAccessToken,  AuthController.deleteUser);
 
 
 router.patch("/profileImage/:id", JWT.verifyAccessToken, upload.single("image"), mode == "development" ? AuthController.addImageToLocal : AuthController.addImageToRemote);
