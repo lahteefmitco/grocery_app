@@ -236,6 +236,7 @@ const deleteUser = async (req, res, next) => {
 
 
         const userIdToDelete = req.params.id;
+        const { isAdmin } = req.payload;
 
         if (isNaN(Number(userIdToDelete))) return next(createError.BadRequest("User ID should be a number"));
 
@@ -249,6 +250,10 @@ const deleteUser = async (req, res, next) => {
 
         if (!userExistsResult) {
             return next(createError.BadRequest(`User with id ${userIdToDelete} not found`));
+        }
+
+        if (isAdmin !==true &&userExistsResult["isAdmin"] === true) {
+            return next(createError.Forbidden("Admin users can't be deleted by normal users"));
         }
 
         if (userExistsResult.id != userIdToDelete && userExistsResult["isAdmin"] === true) {
