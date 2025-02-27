@@ -314,7 +314,7 @@ const updateUser = async (req, res, next) => {
             return next(createError.Forbidden("users can't update other  users"));
         }
 
-        let { name, userName, email, phoneNumber, profileImage } = req.body;
+        let { name, userName, email, phoneNumber} = req.body;
 
         if (!userName) return next(createError.BadRequest("No userName"));
         if (userName.length < 4) return next(createError.BadRequest("Username length is less than 4"));
@@ -334,9 +334,9 @@ const updateUser = async (req, res, next) => {
             phoneNumber = null;
         }
 
-        if (profileImage == undefined) {
-            profileImage = null;
-        }
+        // if (profileImage == undefined) {
+        //     profileImage = null;
+        // }
 
         const updateQuery = `
         UPDATE "User"
@@ -344,14 +344,14 @@ const updateUser = async (req, res, next) => {
             "userName" = :userName,
             email = :email,
             "phoneNumber" = :phoneNumber,
-            "profileImage" = :profileImage
+            
         WHERE id = :userIdToUpdate
-        RETURNING id, name, "userName", email, "phoneNumber", "profileImage", "isAdmin"
+        RETURNING id, name, "userName", email, "phoneNumber",  "isAdmin"
     `;
 
 
       const [updatedUser] = await sequelize.query(updateQuery, {
-            replacements: { userIdToUpdate, name, userName, email, phoneNumber, profileImage },
+            replacements: { userIdToUpdate, name, userName, email, phoneNumber },
             type: sequelize.QueryTypes.UPDATE
         });
 
