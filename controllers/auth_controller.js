@@ -343,10 +343,10 @@ const updateUser = async (req, res, next) => {
         SET name = :name,
             "userName" = :userName,
             email = :email,
-            "phoneNumber" = :phoneNumber,
+            "phoneNumber" = :phoneNumber
             
         WHERE id = :userIdToUpdate
-        RETURNING id, name, "userName", email, "phoneNumber",  "isAdmin"
+        RETURNING id, name, "userName", email, "phoneNumber", "profileImage",  "isAdmin"
     `;
 
 
@@ -359,14 +359,20 @@ const updateUser = async (req, res, next) => {
             return next(createError.InternalServerError("User update failed"));
         }
 
+        console.log(updatedUser);
 
+        var updatedUserResult = updatedUser[0];
+        updatedUserResult.password = "********";
+        console.log(updatedUserResult);
+        
 
         res.json({
             message: "User updated successfully",
-            user: updatedUser[0] // Return the updated user data
+            user: updatedUserResult// Return the updated user data
         });
 
     } catch (error) {
+        console.log(error);
         if (error.name === "SequelizeUniqueConstraintError") {
             console.log(error);
             
@@ -376,7 +382,7 @@ const updateUser = async (req, res, next) => {
             return next(createError.InternalServerError("Database problem, please contact with developer"))
         }
 
-        console.log(error);
+        
         next(error)
     }
 }
