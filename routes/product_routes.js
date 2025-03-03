@@ -58,7 +58,7 @@ router.post("/createProduct", JWT.verifyAccessToken, AdminVerification.verifyAdm
 
 router.get("/listAllProductsUnderACategory/:categoryId", JWT.verifyAccessToken, ProductController.getProductUnderACategoryForRemote);
 
-router.get("/listAllProducts", JWT.verifyAccessToken, AdminVerification.verifyAdmin, ProductController.listAllProductsRemote);
+router.get("/listAllProducts", JWT.verifyAccessToken, ProductController.listAllProductsRemote);
 
 router.get("/getAProduct/:productId", JWT.verifyAccessToken, ProductController.getProductById);
 
