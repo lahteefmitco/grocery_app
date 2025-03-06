@@ -2,6 +2,7 @@ const express = require("express");
 const createError = require("http-errors");
 const sequelize = require("./helpers/database");
 const JWT = require("./helpers/jwt_helper");
+const cors = require("cors");
 require("dotenv").config();
 
 const {getBackBazeImage}= require("./controllers/backblaze_image_controller");
@@ -31,9 +32,11 @@ const createFolderIfNotExists = (folderName) => {
 
 const app = express();
 app.use(express.json());
+app.use(cors());
 
 app.set('views', path.join(__dirname, 'views'));
 app.set("view engine", "ejs");
+
 
 
 sequelize.sync({ force: true }).then(
