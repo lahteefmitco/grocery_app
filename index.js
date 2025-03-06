@@ -2,6 +2,7 @@ const express = require("express");
 const createError = require("http-errors");
 const sequelize = require("./helpers/database");
 const JWT = require("./helpers/jwt_helper");
+const cors = require('cors')
 require("dotenv").config();
 
 
@@ -28,6 +29,7 @@ const createFolderIfNotExists = (folderName) => {
 };
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 app.set('views', path.join(__dirname, 'views'));
