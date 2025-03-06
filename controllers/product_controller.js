@@ -1006,11 +1006,46 @@ const searchProduct = async (req, res, next) => {
             type: sequelize.QueryTypes.SELECT
         });
 
-        // if (products.length === 0) {
-        //     return next(createError.NotFound("No products found with the given name"));
-        // }
+        const searchResult = [];
 
-        res.send(products);
+        for (let index = 0; index < products.length; index++) {
+            const element = products[index];
+            const productId = element.id;
+
+
+            const getCategoriesUnderAProduct = `SELECT "categoryId" 
+               FROM "CategoryProductJunctionTable" 
+               WHERE "productId" = :productId;
+            `
+            const categories = await sequelize.query(getCategoriesUnderAProduct, {
+                replacements: { productId },
+                type: sequelize.QueryTypes.SELECT
+            })
+
+            const newCategoryList = [];
+
+
+
+            for (let index = 0; index < categories.length; index++) {
+                const category = categories[index];
+                newCategoryList.push(category.categoryId);
+
+            }
+
+
+            const output = {
+                product: element,
+                categories: newCategoryList
+            }
+
+            searchResult.push(output);
+
+            
+        }
+
+        
+
+        res.send(searchResult);
 
     } catch (error) {
         console.log(error);
