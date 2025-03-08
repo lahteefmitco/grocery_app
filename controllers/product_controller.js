@@ -643,7 +643,7 @@ const updateProductRemote = async (req, res, next) => {
 
 
 
-        var { productName, productDescription, price, image, stockQuantity, unit, isAvailable, isTrending } = product;
+        var { productName, productDescription, price,  stockQuantity, unit, isAvailable, isTrending } = product;
 
 
 
@@ -653,9 +653,7 @@ const updateProductRemote = async (req, res, next) => {
         if (!productDescription) {
             productDescription = null;
         }
-        if (!image) {
-            image = null;
-        }
+        
         if (!stockQuantity) {
             stockQuantity = 0;
         }
@@ -684,7 +682,6 @@ const updateProductRemote = async (req, res, next) => {
             SET "productName" = :productName, 
             "productDescription" = :productDescription,
             price = :price, 
-            image = :image, 
             "stockQuantity" = :stockQuantity, 
             unit = :unit,
             "isAvailable" = :isAvailable,
@@ -692,13 +689,13 @@ const updateProductRemote = async (req, res, next) => {
             WHERE id = :productId;
         `,
             {
-                replacements: { productName, productDescription, price, image, stockQuantity, unit, isAvailable, isTrending, productId },
+                replacements: { productName, productDescription, price, stockQuantity, unit, isAvailable, isTrending, productId },
                 transaction: t
             });
 
-        if (image === null && productExistsResult.image) {
-            removeProductImage(productExistsResult.image);
-        }
+        // if (image === null && productExistsResult.image) {
+        //     removeProductImage(productExistsResult.image);
+        // }
 
         // Delete the existing categories for the product
         const deleteCategoryQuery = `DELETE FROM "CategoryProductJunctionTable" WHERE "productId" = :productId`;
